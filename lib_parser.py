@@ -23,7 +23,7 @@ class Parser:
     e.g., ["in", "2002"]
     '''
     def parse_phrase(self, tmp_arg):
-        date_obj = self.parse_date(tmp_arg)
+        date_obj = self.parse_reference_date(tmp_arg)
         fuzzy_date_obj = self.parse_fuzzy_date(tmp_arg)
         duration_obj = self.parse_duration(tmp_arg)
         comparative_timepoint = self.parse_comparative_timepoint(tmp_arg)
