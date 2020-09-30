@@ -187,9 +187,7 @@ def get_verb_idx(tags):
     return None
 
 
-months = [
-    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
-]
+months = {'januray': 1, 'jan':1, 'feburary':2, 'feb':2, 'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12}
 
 
 def get_int_val(tok):
@@ -219,7 +217,7 @@ def extract_in(toks):
     for i, t in enumerate(toks):
         if t == "in" and i < len(toks) - 1:
             if toks[i+1] in months:
-                month = toks[i+1]
+                month = months[toks[i+1]]
                 if i+2 < len(toks):
                     year = get_int_val(toks[i+2])
             else:
@@ -238,7 +236,7 @@ def extract_on(toks):
         if t == "on":
             for j in range(i+1, min(i+5, len(toks))):
                 if toks[j] in months:
-                    month = toks[j]
+                    month = months[toks[j]]
                 else:
                     cur_tok = toks[j]
                     if cur_tok.endswith("th") or cur_tok.endswith("rd") or cur_tok.endswith("st"):

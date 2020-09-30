@@ -53,10 +53,11 @@ def run_over_srl_preprocessed_files(file_name, limit=1000):
 
                 temporal_arguments = get_temporal_arguments(words, verb['tags'])
                 # Use this next line to see what's inside, comment it out when done
-                # print(temporal_arguments)
+                #print(temporal_arguments)
 
                 for tmp_arg in temporal_arguments:
                     result = parser.parse_phrase(tmp_arg)
 
-
-run_over_srl_preprocessed_files("samples/wikipedia_temporal_related_srl_parsed_small.txt")
+parser = Parser()
+print(parser.parse_reference_date("I met john, october 26 2002".split(" ")))
+#run_over_srl_preprocessed_files("samples/wikipedia_temporal_related_srl_parsed_small.txt")

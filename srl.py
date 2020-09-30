@@ -36,9 +36,9 @@ class AllenSRL:
 
     def predict(self,tokens):
         prediction = self.predictor.predict_tokenized(tokens)
-        predictionarray = [prediction]
-        result = parser.extract_timex(predictionarray)
-        print(result)
+        #predictionarray = [prediction]
+        #result = parser.extract_timex(predictionarray)
+        print(prediction)
         tags = prediction['verbs'][0]['tags']
         words = prediction['words']
         tempargs = ""
@@ -51,4 +51,4 @@ class AllenSRL:
 srl = AllenSRL()
 
 
-srl.predict("I ate dinner on Feburary 2020".split(" "))
+srl.predict("I ate dinner, Feburary 2020".split(" "))
