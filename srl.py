@@ -51,4 +51,4 @@ class AllenSRL:
 srl = AllenSRL()
 
 
-srl.predict("I ate dinner, Feburary 2020".split(" "))
+srl.predict("I ate dinner, 02/04/2002".split(" "))

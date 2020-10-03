@@ -41,6 +41,7 @@ class Parser:
     Parse explicit timepoint in the timex
     e.g., 2002, February, morning, 8 AM
     '''
+            
     def parse_reference_date(self, tmp_arg):
         months = {'januray': 1, 'jan':1, 'feburary':2, 'feb':2, 'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12}
         result = TimeStruct(None,None,None,None,None)
@@ -57,7 +58,6 @@ class Parser:
         timeh = None
         timem = None
         dateameric = re.compile("^(?:(?:31(\/|-|\.)(?:0?[13578]|1[02]|(?:Jan|Mar|May|Jul|Aug|Oct|Dec)))\1|(?:(?:29|30)(\/|-|\.)(?:0?[1,3-9]|1[0-2]|(?:Jan|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec))\2))(?:(?:1[6-9]|[2-9]\d)?\d{2})$|^(?:29(\/|-|\.)(?:0?2|(?:Feb))\3(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00))))$|^(?:0?[1-9]|1\d|2[0-8])(\/|-|\.)(?:(?:0?[1-9]|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep))|(?:1[0-2]|(?:Oct|Nov|Dec)))\4(?:(?:1[6-9]|[2-9]\d)?\d{2})$")
-        date
         for i, x in enumerate(tmp_arg):
             try:
                 float(x)
@@ -72,9 +72,16 @@ class Parser:
                     month = months[x]
                 if (result.day is None) and (x.endswith('th') or x.endswith('st') or x.endswith('nd')):
                     day = x[:-2]
-                #if dateameric.match(x):
-                    # do check for date
-                
+                if dateameric.match(x):
+                    if len(x.split('/')) > 1:
+                        if(len(x.split('/'))== 2):
+                            # TODO create regex that will accept 04/02
+                            month = x[0]
+                            year = x[1]
+                        elif(len(x.split('/')) == 3):
+                            day = x[0]
+                            month = x[1]
+                            year = x[2]
         if year is not None:
             result.year = year 
         if day is not None:
