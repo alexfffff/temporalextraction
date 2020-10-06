@@ -232,15 +232,6 @@ class AllenSRL:
         return time1<time2
 
 
-
-
-        
-    
-
-        
-        
-
-
-        
-srl = AllenSRL()
-print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
+if __name__ == "__main__":
+    srl = AllenSRL()
+    srl.predict("I ate dinner on october 26 2002".split(" "), 1)
