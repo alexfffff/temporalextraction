@@ -178,22 +178,24 @@ class CogCompTimeBackend:
                 event_j = event_map[event_id_j]
                 phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
                 phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
-                instance = "event: {} starts before {} story:{} \t nothing".format(phrase_i, phrase_j, story)
+                instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story)
                 to_process_instances.append(instance)
 
-        print(to_process_instances)
         results = self.predictor.predict(to_process_instances)
-        print(results)
-        # graph = Graph(event_count)
-        # it = 0
-        # for event_id_i in all_event_ids:
-        #     for event_id_j in all_event_ids:
-        #         if event_id_i == event_id_j:
-        #             continue
-        #         prediction = results[it]
-        #         if prediction == 1:
-        #             graph.addEdge(0, 0)
-        #         it += 1
+        graph = Graph(event_count)
+        it = 0
+        for event_id_i in all_event_ids:
+            for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
+                prediction = results[it]
+                if prediction == 1:
+                    graph.addEdge(event_id_i, event_id_j)
+                else:
+                    graph.addEdge(event_id_j, event_id_i)
+                it += 1
+        print(graph.isCyclic())
+        print(graph.topologicalSort())
 
 
 backend = CogCompTimeBackend()
