@@ -105,10 +105,3 @@ class Predictor:
                 ret.append(dec)
         return ret
 
-
-predictor = Predictor()
-result = predictor.predict(
-    ["event: i went to work starts before i get back home story: "]
-)
-print(result)
-
