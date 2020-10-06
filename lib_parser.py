@@ -1,5 +1,8 @@
 import parser 
 import re
+from allennlp.models.archival import load_archive
+from allennlp.predictors import Predictor
+from datetime import date
 '''
 An example of the data structure, it's up to you to use it or not
 '''
@@ -125,4 +128,117 @@ class Parser:
     '''
     Add other functions / cases 
     '''
+class PretrainedModel:
+    """
+    A pretrained model is determined by both an archive file
+    (representing the trained model)
+    and a choice of predictor.
+    """
+    def __init__(self, archive_file: str, predictor_name: str) -> None:
+        self.archive_file = archive_file
+        self.predictor_name = predictor_name
 
+    def predictor(self) -> Predictor:
+        archive = load_archive(self.archive_file)
+        return Predictor.from_archive(archive, self.predictor_name)
+
+class AllenSRL:
+
+    def __init__(self):
+        model = PretrainedModel('https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
+        #model = PretrainedModel('model.tar.gz',
+                                'semantic-role-labeling')
+        self.predictor = model.predictor()
+        #self.predictor._model = self.predictor._model.cuda()
+        #self.output_path = output_path
+
+    def get_temporal_arguments(self,words, tags):
+        ret = []
+        for i, t in enumerate(tags):
+            if t == "B-ARGM-TMP":
+                end = i + 1
+                for j in range(i+1, len(tags)):
+                    if tags[j] == "I-ARGM-TMP":
+                        end = j + 1
+                    else:
+                        break
+                ret.append(words[i:end])
+        return ret
+    '''
+    takes a sentence as a array, and the index of the target verb. 
+    returns the timestructure of the predicted time that the verb happened
+    '''
+    def predict(self,tokens,verbindex):
+        prediction = self.predictor.predict_tokenized(tokens)
+        words = prediction['words']
+        # figure out which duplicate the verb is
+        verb = words[verbindex]
+        number = 0
+        tempargs = []
+        for i, x in enumerate(tokens):
+            if x == verb and i != verbindex:
+                number += 1
+            elif i == verbindex:
+                number += 1
+                break
+        
+        # gets the temparg of the verb
+        counter = 0
+        for i in prediction['verbs']:
+            if i['verb'] == verb:
+                counter += 1
+            if counter == number:
+                tempargs = self.get_temporal_arguments(words,i['tags'])
+                if len(tempargs) == 0:
+                    return None
+                else:
+                    return parse_reference_date(tempargs)
+
+
+    '''
+    takes the target timestruct and today and replaces the args that are non in the timestruct with today
+    returns the updated timestruct
+    '''
+    def replace(temargs,today):
+        if temargs == None:
+            return None
+        if temargs.year == None:
+            temargs.year = today.year
+        if temargs.month == None:
+            temargs.month = today.month
+        if temargs.day == None:
+            temargs.day = today.day
+        return temargs
+    '''
+    takes the verb index for both verbs (x,y) where x is the index of sentence and y is the index of verb in sentence
+    returns the time difference between the two. 
+    '''
+    
+
+    def comparison_predict(tokens,verbix1,verbix2):
+        temp = date.today()
+        today = TimeStruct(None,None,temp.day,temp.month,temp.year)
+        sen1 = tokens[verbix1[0]]
+        sen2 = tokens[verbix2[0]]
+        temparg1 = replace(predict(sen1,verbix1[1]),today)
+        temparg2 = replace(predict(sen2,verbix2[1]),today)
+        if temparg1 == None or temparg2 == None:
+            return None
+        else: 
+            time1 = temparg1.year + (temparg1.month - 1) /12 + (temparg1.day) / 365
+            time2 = temparg2.year + (temparg2.month - 1) /12 + (temparg2.day) / 365
+        return time1>time2
+
+
+
+
+        
+    
+
+        
+        
+
+
+        
+srl = AllenSRL()
+srl.predict("I ate dinner on october 26 2002".split(" "), 1)

@@ -58,6 +58,10 @@ def run_over_srl_preprocessed_files(file_name, limit=1000):
                 for tmp_arg in temporal_arguments:
                     result = parser.parse_phrase(tmp_arg)
 
+'''
+take the token list and 2 verb indicies and 
+'''
+
 parser = Parser()
 print(parser.parse_reference_date("I met john, 2002/02/02".split(" ")))
 #run_over_srl_preprocessed_files("samples/wikipedia_temporal_related_srl_parsed_small.txt")
