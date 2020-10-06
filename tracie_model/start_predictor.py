@@ -93,12 +93,11 @@ class Predictor:
                     max_length=4,
                 )
                 dec = [self.tokenizer.decode(ids) for ids in outputs]
-                if dec[2] == "positive":
-                    ret.append(1)
-                elif dec[2] == "negative":
-                    ret.append(-1)
-                else:
-                    ret.append(0)
+                for item in dec:
+                    if item.split()[1][:8] == "positive":
+                        ret.append(1)
+                    else:
+                        ret.append(-1)
 
         return ret
 
