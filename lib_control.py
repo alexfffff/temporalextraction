@@ -148,8 +148,10 @@ class CogCompTimeBackend:
         to_process_instances = []
         for event_id_i in all_event_ids:
             for event_id_j in all_event_ids:
-                phrase_i = self.format_model_phrase(event_id_i, srl_objs[event_id_i[0]])
-                phrase_j = self.format_model_phrase(event_id_j, srl_objs[event_id_j[0]])
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
+                phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
                 instance = "event: {} starts before {} story: \t nothing".format(phrase_i, phrase_j)
                 to_process_instances.append(instance)
 
