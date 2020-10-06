@@ -194,7 +194,6 @@ class AllenSRL:
                 else:
                     return parse_reference_date(tempargs)
 
-
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today
     returns the updated timestruct
@@ -213,7 +212,6 @@ class AllenSRL:
     takes the verb index for both verbs (x,y) where x is the index of sentence and y is the index of verb in sentence
     returns the time difference between the two. 
     '''
-    
 
     def comparison_predict(tokens,verbix1,verbix2):
         temp = date.today()
@@ -230,15 +228,6 @@ class AllenSRL:
         return time1>time2
 
 
-
-
-        
-    
-
-        
-        
-
-
-        
-srl = AllenSRL()
-srl.predict("I ate dinner on october 26 2002".split(" "), 1)
+if __name__ == "__main__":
+    srl = AllenSRL()
+    srl.predict("I ate dinner on october 26 2002".split(" "), 1)

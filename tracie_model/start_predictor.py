@@ -1,23 +1,14 @@
 import torch
 from torch.utils.data.dataloader import DataLoader
 from transformers import (
-    CONFIG_MAPPING,
-    MODEL_WITH_LM_HEAD_MAPPING,
-    AutoConfig,
-    AutoModelWithLMHead,
     AutoTokenizer,
-    HfArgumentParser,
     PreTrainedTokenizer,
-    Trainer,
-    TrainingArguments,
-    set_seed,
     T5ForConditionalGeneration,
 )
-from transformers.trainer import SequentialDistributedSampler
-from torch.utils.data.sampler import RandomSampler, Sampler, SequentialSampler
+from torch.utils.data.sampler import SequentialSampler
 from transformers.data.data_collator import DataCollator
 from torch.utils.data.dataset import Dataset
-from typing import Any, Dict, List, NewType, Tuple
+from typing import Dict
 from dataclasses import dataclass
 
 @dataclass
@@ -102,6 +93,12 @@ class Predictor:
                     max_length=4,
                 )
                 dec = [self.tokenizer.decode(ids) for ids in outputs]
-                ret.append(dec)
+                if dec[2] == "positive":
+                    ret.append(1)
+                elif dec[2] == "negative":
+                    ret.append(-1)
+                else:
+                    ret.append(0)
+
         return ret
 
