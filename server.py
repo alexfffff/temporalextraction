@@ -11,7 +11,7 @@ class CogCompTimeDemoService:
     def __init__(self):
         self.app = Flask(__name__)
         CORS(self.app)
-        self.backend =  CogCompTimeBackend()
+        self.backend = CogCompTimeBackend()
 
     @staticmethod
     def handle_root(path):
@@ -23,11 +23,12 @@ class CogCompTimeDemoService:
     def handle_index():
         return send_from_directory('./frontend', 'index.html')
 
-    @staticmethod
-    def handle_request():
+    def handle_request(self):
         args = request.get_json()
+        text = args['text']
+        order = self.backend.build_graph(text)
         return {
-            "result": "test",
+            "result": order,
         }
 
     def start(self, localhost=False, port=80, ssl=False):
@@ -48,4 +49,4 @@ class CogCompTimeDemoService:
 
 if __name__ == "__main__":
     service = CogCompTimeDemoService()
-    service.start(localhost=True, port=5000)
+    service.start(localhost=False, port=4014)

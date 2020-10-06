@@ -34,6 +34,11 @@
         </form>
     </div>
 
+    <br>
+    <div id="result-display">
+
+    </div>
+
 </div>
 
 <!-- Optional JavaScript -->
@@ -50,6 +55,7 @@
 <script>
 
     function gen_result() {
+        document.getElementById("result-display").innerHTML = "";
         var base_url = document.getElementById("base-url").innerText;
         var text = document.getElementById("main-input").value;
         var request_url = base_url + "/request";
@@ -70,6 +76,12 @@
     }
 
     function request_callback(result) {
+        var order = result['result'];
+        for (var i = 0; i < order.length; i++) {
+            var content = order[i];
+            document.getElementById("result-display").innerHTML += "<span class='badge badge-primary'>" + content + "</span>";
+        }
+
     }
 </script>
 </body>

@@ -194,9 +194,9 @@ class CogCompTimeBackend:
                 else:
                     graph.addEdge(event_id_j, event_id_i)
                 it += 1
-        print(graph.isCyclic())
-        print(graph.topologicalSort())
 
-
-backend = CogCompTimeBackend()
-backend.build_graph("They became friends when they attended the same university 9 years ago. Now they are planning their wedding this June.")
+        ret = []
+        for event_id in graph.topologicalSort():
+            event_obj = event_map[event_id]
+            ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
+        return ret
