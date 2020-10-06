@@ -26,12 +26,8 @@
 
     <br>
     <div id="input_section">
-        <form>
-            <div class="form-group">
-                <textarea class="form-control" id="main-input"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" onclick="gen_result();">Submit</button>
-        </form>
+        <textarea class="form-control" id="main-input"></textarea>
+        <button type="submit" class="btn btn-primary" onclick="gen_result();">Submit</button>
     </div>
 
     <br>
@@ -79,7 +75,7 @@
         var order = result['result'];
         for (var i = 0; i < order.length; i++) {
             var content = order[i];
-            document.getElementById("result-display").innerHTML += "<span class='badge badge-primary'>" + content + "</span>";
+            document.getElementById("result-display").innerHTML += "<span class='badge badge-primary'>" + content + "</span> ";
         }
 
     }
