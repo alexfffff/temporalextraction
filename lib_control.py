@@ -1,5 +1,6 @@
 from tracie_model.start_predictor import Predictor
 from lib_parser import PretrainedModel
+import random
 import spacy
 import torch
 from collections import defaultdict
@@ -12,12 +13,34 @@ def get_verb_index(tags):
     # There is no verb, abort
     return -1
 
+
 def get_skeleton_phrase(tags, words):
     ret = ""
     for i, tok in enumerate(words):
-        if tags[i] != "O":
+        if tags[i] != "O" and "ARGM-TMP" not in tags[i]:
             ret += tok + " "
     return ret.strip()
+
+
+def get_story(srl_objs, max_len=300):
+    all_story = []
+    all_story_length = 0
+    for obj in srl_objs:
+        all_story.append(" ".join(obj['words']))
+        all_story_length += len(obj['words'])
+    selected_set = set()
+    while all_story_length > 300:
+        to_remove = random.choice(range(0, len(all_story)))
+        if to_remove not in selected_set:
+            selected_set.add(to_remove)
+            all_story_length -= len(all_story[to_remove].split())
+
+    final_story = ""
+    for i, s in enumerate(all_story):
+        if i not in selected_set:
+            final_story += s + " "
+
+    return final_story
 
 
 class Graph:
@@ -140,6 +163,7 @@ class CogCompTimeBackend:
 
     def build_graph(self, text):
         sentences, srl_objs = self.parse_srl(text)
+        story = get_story(srl_objs)
         for i in range(0, len(sentences)):
             for j in range(0, len(sentences[i])):
                 assert sentences[i][j] == srl_objs[i]['words'][j]
@@ -148,16 +172,28 @@ class CogCompTimeBackend:
         to_process_instances = []
         for event_id_i in all_event_ids:
             for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
                 event_i = event_map[event_id_i]
                 event_j = event_map[event_id_j]
                 phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
                 phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
-                instance = "event: {} starts before {} story: \t nothing".format(phrase_i, phrase_j)
+                instance = "event: {} starts before {} story:{} \t nothing".format(phrase_i, phrase_j, story)
                 to_process_instances.append(instance)
 
+        print(to_process_instances)
         results = self.predictor.predict(to_process_instances)
         print(results)
-        graph = Graph(event_count)
+        # graph = Graph(event_count)
+        # it = 0
+        # for event_id_i in all_event_ids:
+        #     for event_id_j in all_event_ids:
+        #         if event_id_i == event_id_j:
+        #             continue
+        #         prediction = results[it]
+        #         if prediction == 1:
+        #             graph.addEdge(0, 0)
+        #         it += 1
 
 
 backend = CogCompTimeBackend()
