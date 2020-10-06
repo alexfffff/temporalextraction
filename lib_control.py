@@ -161,6 +161,15 @@ class CogCompTimeBackend:
                 phrase = get_skeleton_phrase(verb['tags'], srl['words'])
         return phrase
 
+    '''
+    input: edge map 
+    {"0,1":0.1} means an edge from index 0 to index 1 with weight 0.1
+    return: a list of sorted indices from ILP
+    '''
+    def ilp_sort(self, edges):
+        # TODO: Haoyu
+        pass
+
     def build_graph(self, text):
         print("Received Text: {}".format(text))
         sentences, srl_objs = self.parse_srl(text)

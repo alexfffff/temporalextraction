@@ -164,6 +164,7 @@ class AllenSRL:
                         break
                 ret.append(words[i:end])
         return ret
+
     '''
     takes a sentence as a array, and the index of the target verb. 
     returns the timestructure of the predicted time that the verb happened
@@ -196,7 +197,6 @@ class AllenSRL:
                 else:
                     return parser.parse_reference_date(tempargs[0])
 
-
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today
     returns the updated timestruct
@@ -216,7 +216,6 @@ class AllenSRL:
     returns the time difference between the two. 
     '''
     
-
     def comparison_predict(self,tokens,verbix1,verbix2):
         temp = date.today()
         today = TimeStruct(None,None,temp.day,temp.month,temp.year)
