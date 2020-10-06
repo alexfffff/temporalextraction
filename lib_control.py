@@ -29,7 +29,7 @@ def get_story(srl_objs, max_len=300):
         all_story.append(" ".join(obj['words']))
         all_story_length += len(obj['words'])
     selected_set = set()
-    while all_story_length > 300:
+    while all_story_length > max_len:
         to_remove = random.choice(range(0, len(all_story)))
         if to_remove not in selected_set:
             selected_set.add(to_remove)
@@ -162,7 +162,9 @@ class CogCompTimeBackend:
         return phrase
 
     def build_graph(self, text):
+        print("Received Text: {}".format(text))
         sentences, srl_objs = self.parse_srl(text)
+        print("SRL Parsed")
         story = get_story(srl_objs)
         for i in range(0, len(sentences)):
             for j in range(0, len(sentences[i])):
@@ -182,6 +184,7 @@ class CogCompTimeBackend:
                 to_process_instances.append(instance)
 
         results = self.predictor.predict(to_process_instances)
+        print("Model Prediction Finished.")
         graph = Graph(event_count)
         it = 0
         for event_id_i in all_event_ids:
@@ -199,4 +202,5 @@ class CogCompTimeBackend:
         for event_id in graph.topologicalSort():
             event_obj = event_map[event_id]
             ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
+        print("Prepared to return.")
         return ret
