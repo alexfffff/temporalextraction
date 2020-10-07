@@ -4,7 +4,7 @@ import random
 import spacy
 import torch
 from collections import defaultdict
-
+from gurobi_graph import *
 
 def get_verb_index(tags):
     for i, t in enumerate(tags):
@@ -169,7 +169,15 @@ class CogCompTimeBackend:
     '''
     def ilp_sort(self, edges):
         # TODO: Haoyu
-        pass
+        output = gurobi_opt(edges).gurobi_output()
+        g = Graph(output.shape[0])
+        for i in range(0, output.shape[0]):
+            for j in range(i+1, output.shape[0]):
+                if output[i][j][0] == 1.0:
+                    g.addEdge(i, j)
+                else:
+                    g.addEdge(j, i)
+        return g.topologicalSort() 
 
     def build_graph(self, text):
         print("Received Text: {}".format(text))
