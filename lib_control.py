@@ -168,7 +168,6 @@ class CogCompTimeBackend:
     return: a list of sorted indices from ILP
     '''
     def ilp_sort(self, edges):
-        # TODO: Haoyu
         output = gurobi_opt(edges).gurobi_output()
         g = Graph(output.shape[0])
         for i in range(0, output.shape[0]):
@@ -243,27 +242,14 @@ class CogCompTimeBackend:
                 directed_edge_map[key] = (2.0 - edge_map[edge]) / 2.0
             else:
                 directed_edge_map[edge] = edge_map[edge] / 2.0
-        print(edge_map)
-        print(directed_edge_map)
-        # graph = Graph(event_count)
-        # it = 0
-        # for event_id_i in all_event_ids:
-        #     for event_id_j in all_event_ids:
-        #         if event_id_i == event_id_j:
-        #             continue
-        #         prediction = results[it]
-        #         if prediction == 1:
-        #             graph.addEdge(event_id_i, event_id_j)
-        #         else:
-        #             graph.addEdge(event_id_j, event_id_i)
-        #         it += 1
-        #
-        # ret = []
-        # for event_id in graph.topologicalSort():
-        #     event_obj = event_map[event_id]
-        #     ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
-        print("Prepared to return.")
-        # return ret
+
+        sorted_edges = self.ilp_sort(directed_edge_map)
+        print(sorted_edges)
+        ret = []
+        for event_id in sorted_edges:
+            event_obj = event_map[event_id]
+            ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
+        return ret
 
 
 if __name__ == "__main__":
