@@ -169,9 +169,8 @@ class AllenSRL:
     takes a sentence as a array, and the index of the target verb. 
     returns the timestructure of the predicted time that the verb happened
     '''
-    def predict(self,tokens,verbindex):
+    def predict(self, tokens, verbindex, prediction=None):
         parser = Parser()
-        prediction = self.predictor.predict_tokenized(tokens)
         words = prediction['words']
         # figure out which duplicate the verb is
         verb = words[verbindex]
@@ -191,7 +190,6 @@ class AllenSRL:
                 counter += 1
             if counter == number:
                 tempargs = self.get_temporal_arguments(words,i['tags'])
-                print(tempargs)
                 if len(tempargs) == 0:
                     return None
                 else:
@@ -216,13 +214,13 @@ class AllenSRL:
     returns the time difference between the two. 
     '''
     
-    def comparison_predict(self,tokens,verbix1,verbix2):
+    def comparison_predict(self,tokens,verbix1,verbix2, srl_obj_1, srl_obj_2):
         temp = date.today()
         today = TimeStruct(None,None,temp.day,temp.month,temp.year)
         sen1 = tokens[verbix1[0]]
         sen2 = tokens[verbix2[0]]
-        temparg1 = self.replace(self.predict(sen1,verbix1[1]),today)
-        temparg2 = self.replace(self.predict(sen2,verbix2[1]),today)
+        temparg1 = self.replace(self.predict(sen1,verbix1[1], prediction=srl_obj_1),today)
+        temparg2 = self.replace(self.predict(sen2,verbix2[1], prediction=srl_obj_2),today)
         if temparg1 == None or temparg2 == None:
             return None
         else: 
