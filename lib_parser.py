@@ -299,6 +299,7 @@ class AllenSRL:
                         break
                 ret.append(words[i:end])
         return ret
+
     '''
     takes the words and tags
     returns the index (beggining,end) of the temporal argument
@@ -353,7 +354,6 @@ class AllenSRL:
                     return None
                 else:
                     return parser.parse_reference_date(tempargs[0])
-
 
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today

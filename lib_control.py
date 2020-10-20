@@ -1,10 +1,10 @@
 from tracie_model.start_predictor import Predictor
-from lib_parser import PretrainedModel
+from lib_parser import PretrainedModel, AllenSRL
 import random
 import spacy
 import torch
 from collections import defaultdict
-
+from gurobi_graph import *
 
 def get_verb_index(tags):
     for i, t in enumerate(tags):
@@ -127,6 +127,7 @@ class CogCompTimeBackend:
         if self.device == 'cuda':
             self.srl_model._model = self.srl_model._model.cuda()
         self.spacy_model = spacy.load("en_core_web_sm", disable='ner')
+        self.alex_srl = AllenSRL()
 
     def parse_srl(self, text):
         doc = self.spacy_model(text)
@@ -161,6 +162,22 @@ class CogCompTimeBackend:
                 phrase = get_skeleton_phrase(verb['tags'], srl['words'])
         return phrase
 
+    '''
+    input: edge map 
+    {"0,1":0.1} means an edge from index 0 to index 1 with weight 0.1
+    return: a list of sorted indices from ILP
+    '''
+    def ilp_sort(self, edges):
+        output = gurobi_opt(edges).gurobi_output()
+        g = Graph(output.shape[0])
+        for i in range(0, output.shape[0]):
+            for j in range(i+1, output.shape[0]):
+                if output[i][j][0] == 1.0:
+                    g.addEdge(i, j)
+                else:
+                    g.addEdge(j, i)
+        return g.topologicalSort() 
+
     def build_graph(self, text):
         print("Received Text: {}".format(text))
         sentences, srl_objs = self.parse_srl(text)
@@ -184,23 +201,57 @@ class CogCompTimeBackend:
                 to_process_instances.append(instance)
 
         results = self.predictor.predict(to_process_instances)
-        print("Model Prediction Finished.")
-        graph = Graph(event_count)
+        edge_map = {}
         it = 0
+        tokens = []
+        for obj in srl_objs:
+            tokens.append(list(obj['words']))
         for event_id_i in all_event_ids:
             for event_id_j in all_event_ids:
                 if event_id_i == event_id_j:
                     continue
                 prediction = results[it]
-                if prediction == 1:
-                    graph.addEdge(event_id_i, event_id_j)
-                else:
-                    graph.addEdge(event_id_j, event_id_i)
                 it += 1
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                timex_relation = None
+                # timex_relation = self.alex_srl.comparison_predict(
+                #     tokens, event_i[:2], event_j[:2], srl_objs[event_i[0]], srl_objs[event_j[0]]
+                # )
+                if timex_relation is None:
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = prediction[0]
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = prediction[1]
+                else:
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = float(timex_relation)
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = 1.0 - float(timex_relation)
+                if key not in edge_map:
+                    edge_map[key] = 0.0
+                edge_map[key] += value
+        directed_edge_map = {}
+        for edge in edge_map:
+            if edge_map[edge] < 1.0:
+                key = "{},{}".format(edge.split(",")[1], edge.split(",")[0])
+                directed_edge_map[key] = (2.0 - edge_map[edge]) / 2.0
+            else:
+                directed_edge_map[edge] = edge_map[edge] / 2.0
 
+        sorted_edges = self.ilp_sort(directed_edge_map)
+        print(sorted_edges)
         ret = []
-        for event_id in graph.topologicalSort():
+        for event_id in sorted_edges:
             event_obj = event_map[event_id]
             ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
-        print("Prepared to return.")
         return ret
+
+
+if __name__ == "__main__":
+    backend = CogCompTimeBackend()
+    backend.build_graph("George Lowe, the last surviving member of the team which first conquered Everest, died in Ripley after a long-term illness, with his wife Mary by his side. The last British climbing member of the team, Mike Westmacott, died last June. Mr. Lowe worked as an Inspector of Schools with the Department of Education and Sciences.")

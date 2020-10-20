@@ -10,6 +10,8 @@ from transformers.data.data_collator import DataCollator
 from torch.utils.data.dataset import Dataset
 from typing import Dict
 from dataclasses import dataclass
+import math
+
 
 @dataclass
 class CustomDataCollator(DataCollator):
@@ -17,14 +19,21 @@ class CustomDataCollator(DataCollator):
         input_ids = torch.tensor([f['input_ids'] for f in features], dtype=torch.long)
         attention_mask = torch.tensor([f['attention_mask'] for f in features], dtype=torch.long)
         lm_labels = torch.tensor([f['lm_labels'] for f in features], dtype=torch.long)
-        decoder_attention_mask = torch.tensor([f['decoder_attention_mask'] for f in features], dtype=torch.long)
-
+        decoder_attention_mask = []
+        decoder_inputs = []
+        for i in range(0, len(features)):
+            decoder_inputs.append([0, 1525, 10] + [0] * (input_ids.size()[1] - 3))
+            decoder_attention_mask.append([1, 1, 1, 1] + [0] * (input_ids.size()[1] - 4))
+        decoder_inputs = torch.tensor(decoder_inputs, dtype=torch.long)
+        decoder_attention_mask = torch.tensor(decoder_attention_mask, dtype=torch.long)
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
             "lm_labels": lm_labels,
+            "decoder_input_ids": decoder_inputs,
             "decoder_attention_mask": decoder_attention_mask,
         }
+
 
 class LineByLineTextDataset(Dataset):
     """
@@ -72,7 +81,14 @@ class Predictor:
         self.model.eval()
         self.data_collator = CustomDataCollator()
 
+    def softmax(self, a_list):
+        a_sum = 0.0
+        for a in a_list:
+            a_sum += math.exp(a)
+        return [math.exp(x) / a_sum for x in a_list]
+
     # Input: a list of lines
+    # Return: a list of [pos, neg] probabilities
     def predict(self, lines):
         eval_dataset = get_dataset(lines, self.tokenizer)
         sampler = SequentialSampler(eval_dataset)
@@ -87,17 +103,22 @@ class Predictor:
             for k, v in inputs.items():
                 inputs[k] = v.to(self.device)
             with torch.no_grad():
-                outputs = self.model.generate(
+                outputs = self.model(
                     input_ids=inputs['input_ids'],
                     attention_mask=inputs['attention_mask'],
-                    max_length=4,
-                )
-                dec = [self.tokenizer.decode(ids) for ids in outputs]
-                for item in dec:
-                    if item.split()[1][:8] == "positive":
-                        ret.append(1)
-                    else:
-                        ret.append(-1)
-
+                    decoder_input_ids=inputs['decoder_input_ids'],
+                    decoder_attention_mask=inputs['decoder_attention_mask'],
+                )[0].cpu().numpy()
+                for output in outputs:
+                    ret.append(self.softmax([output[2][1465], output[2][2841]]))
         return ret
+
+
+if __name__ == "__main__":
+    p = Predictor()
+    r = p.predict([
+        "event: i went home starts before i left home story: \tnothing\n",
+        "event: i left home starts before i get back home story: \tnothing\n",
+    ])
+    print(r)
 
