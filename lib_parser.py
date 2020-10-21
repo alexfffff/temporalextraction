@@ -270,11 +270,18 @@ class PretrainedModel:
         archive = load_archive(self.archive_file)
         return Predictor.from_archive(archive, self.predictor_name)
 
+
 class AllenSRL:
 
-    def __init__(self):
-        model = PretrainedModel('model.tar.gz',
-                                'semantic-role-labeling')
+    def __init__(self, server_mode=False):
+        if server_mode:
+            model = PretrainedModel(
+                'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
+                'semantic-role-labeling'
+            )
+        else:
+            model = PretrainedModel('model.tar.gz',
+                                    'semantic-role-labeling')
 
         #model = PretrainedModel('https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
                                 #'semantic-role-labeling')
@@ -436,18 +443,14 @@ class AllenSRL:
             print(graph[x])
 
         if (verbinx1 not in list(graph.keys())) or (verbinx2 not in list(graph.keys())):
-            print('no')
             return None
         else:
             #case 1 one of the verbs is inside the othe verb and thus we shall return the comparitive if it existsm 
             if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
-                print('no2')
                 return verbinx1.subtract(verbinx2)
             print(verbinx1[0])
             if verbinx1[0] == verbinx2[0]:
-                print('hey')
                 if verbinx2[1] in graph[verbinx1].related_events:
-                    print('lol')
                     return graph[verbinx1].comparison_time
                 elif verbinx1[1] in graph[verbinx2].related_events:
                     return graph[verbinx2].comparison_time
@@ -480,10 +483,11 @@ class AllenSRL:
                             ret[verb[1][0]].append(testverb[1][0])
 
         return ret
-            
+
+
 if __name__ == "__main__":
-    srl = AllenSRL()
+    srl = AllenSRL(server_mode=True)
     srl.get_graph(["I cheated on my girlfriend 5 days before we celebrated our anniversary".split(" ")],"hey")
-    x = srl.compare_events((0,1),(0,9))
+    x = srl.compare_events((0,9),(0,1))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
