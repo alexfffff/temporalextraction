@@ -290,11 +290,18 @@ class PretrainedModel:
         archive = load_archive(self.archive_file)
         return Predictor.from_archive(archive, self.predictor_name)
 
+
 class AllenSRL:
 
-    def __init__(self):
-        model = PretrainedModel('model.tar.gz',
-                                'semantic-role-labeling')
+    def __init__(self, server_mode=False):
+        if server_mode:
+            model = PretrainedModel(
+                'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
+                'semantic-role-labeling'
+            )
+        else:
+            model = PretrainedModel('model.tar.gz',
+                                    'semantic-role-labeling')
 
         #model = PretrainedModel('https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
                                 #'semantic-role-labeling')
@@ -490,16 +497,15 @@ class AllenSRL:
         
 
         if (verbinx1 not in list(graph.keys())) or (verbinx2 not in list(graph.keys())):
-            print('no')
             return None
         else:
             #case 1 one of the verbs is inside the othe verb and thus we shall return the comparitive if it existsm 
             #TODO make the subtract better
             if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
-                print('no2')
                 return verbinx1.subtract(verbinx2)
             if verbinx1[0] == verbinx2[0]:
                 if verbinx2[1] in graph[verbinx1].related_events:
+<<<<<<< HEAD
                     print('lol')
                     try:
                         if graph[verbinx1].comparison_time[1] == 0:
@@ -507,6 +513,9 @@ class AllenSRL:
                         return graph[verbinx1].comparison_time[0] * graph[verbinx1].comparison_time[1]
                     except TypeError:
                         return None
+=======
+                    return graph[verbinx1].comparison_time
+>>>>>>> 31c8ef8d300df00a7357dbdf4f05ec9a89776489
                 elif verbinx1[1] in graph[verbinx2].related_events:
                     try:
                         if graph[verbinx2].comparison_time[1] == 0:
@@ -544,11 +553,18 @@ class AllenSRL:
                                 ret[verb[1][0]].append(testverb[1][0])
 
         return ret
-            
+
+
 if __name__ == "__main__":
+<<<<<<< HEAD
     srl = AllenSRL()
     srl.get_graph(["I ate food on october 5 before I played piano then I ran".split(" ")],"hey")
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     x = srl.compare_events((0,1),(0,7))
+=======
+    srl = AllenSRL(server_mode=True)
+    srl.get_graph(["I cheated on my girlfriend 5 days before we celebrated our anniversary".split(" ")],"hey")
+    x = srl.compare_events((0,9),(0,1))
+>>>>>>> 31c8ef8d300df00a7357dbdf4f05ec9a89776489
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))

@@ -127,7 +127,7 @@ class CogCompTimeBackend:
         if self.device == 'cuda':
             self.srl_model._model = self.srl_model._model.cuda()
         self.spacy_model = spacy.load("en_core_web_sm", disable='ner')
-        self.alex_srl = AllenSRL()
+        self.alex_srl = AllenSRL(server_mode=True)
 
     def parse_srl(self, text):
         doc = self.spacy_model(text)
@@ -206,6 +206,7 @@ class CogCompTimeBackend:
         tokens = []
         for obj in srl_objs:
             tokens.append(list(obj['words']))
+        self.alex_srl.get_graph(tokens)
         for event_id_i in all_event_ids:
             for event_id_j in all_event_ids:
                 if event_id_i == event_id_j:
@@ -214,10 +215,10 @@ class CogCompTimeBackend:
                 it += 1
                 event_i = event_map[event_id_i]
                 event_j = event_map[event_id_j]
-                timex_relation = None
-                # timex_relation = self.alex_srl.comparison_predict(
-                #     tokens, event_i[:2], event_j[:2], srl_objs[event_i[0]], srl_objs[event_j[0]]
-                # )
+                # timex_relation = None
+                timex_relation = self.alex_srl.compare_events(
+                    event_i[:2], event_j[:2]
+                )
                 if timex_relation is None:
                     if event_id_i < event_id_j:
                         key = "{},{}".format(str(event_id_i), str(event_id_j))
