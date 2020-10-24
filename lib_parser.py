@@ -14,9 +14,10 @@ class TimeStruct:
         self.day = day
         self.month = month
         self.year = year
+        self.second = None
     
     def __str__(self):
-        return "{} {} {} {}:{}".format(str(self.year), str(self.month), str(self.day), str(self.hour), str(self.minute))
+        return "({} {} {} {}:{}, {})".format(str(self.year), str(self.month), str(self.day), str(self.hour), str(self.minute),str(self.second))
     def get_date(self):
         convert_map = {
             "second": 1.0,
@@ -59,15 +60,25 @@ class TimeStruct:
             array.append(0)
         else:
             array.append(self.minute)
+        if self.second == None:
+            array.append(0)
+        else:
+            array.append(self.second)
 
-        return array[0] * convert_map['years'] + (array[1]) * convert_map['months']+ array[2] * convert_map['days']  + array[3] * convert_map['hours'] + array[4] * convert_map['minutes']
+        return array[0] * convert_map['years'] + (array[1]) * convert_map['months']+ array[2] * convert_map['days']  + array[3] * convert_map['hours'] + array[4] * convert_map['minutes'] + array[5]
 
     def is_empty(self):
+        if self == None:
+            return True
         return (self.year or self.day or self.month or self.hour or self.minute) == None
 
     def subtract(self,compare):
         # TODO we only want to subtract the things that they share, october 26 2002 and october 27 is most likeley just 1 day apart. 
         return compare.get_date - self.get_date
+
+    def copy(self):
+        x = TimeStruct(self.minute, self.hour,self.day,self.month,self.year)
+        return x
 
 
 class EventObject:
@@ -202,43 +213,52 @@ class Parser:
             "centuries": 100.0 * 365.0 * 24.0 * 60.0 * 60.0,
         } 
         parity_map = {
-            "later": -1.0,
-            "after": -1.0,
-            "next": -1.0,
-            "since": -1.0,
-            "then": -1.0,
-            "prior": 1.0,
-            "ago":1.0,
-            "earlier": 1.0,
-            "before": 1.0,
+            "later": -1,
+            "after": -1,
+            "next": -1,
+            "since": -1,
+             "past":-1,
+            "then": -1,
+            "prior": 1,
+            "ago":1,
+            "earlier": 1,
+            "before": 1,
+            "while": 0,
+            "and": 0,
+           
         }
-        context = 0
-        index_of_time = None
-        modifier = 1
+        
         # assumption: that the word before days/years/etc. will be the number 
         #modifier = None represents that the modifier is plural but we have no idea. "i ate food days before i went to the doctor"
+        time = 0
         for x in convert_map.keys():
+            context = 0
+            index_of_time = None
+            modifier = 1
             if x in tmp_arg:
                 if x[-1] == 's':
                     modifier = None
                 index_of_time = tmp_arg.index(x)
                 context = convert_map[x]
-
-        if index_of_time != None:
-            number = tmp_arg[index_of_time - 1]
-            if modifier == None:
-                try:
-                    modifier = w2n.word_to_num(number)
-                except ValueError:
-                    modifier = None
-        # TODO add in support for 1 month and 5 days ago, right now it is only for one. 
-
+            if index_of_time != None:
+                number = tmp_arg[index_of_time - 1]
+                if modifier == None:
+                    try:
+                        modifier = w2n.word_to_num(number)
+                    except ValueError:
+                        # default for days, ( like maybe 3 days is good enough)
+                        modifier = 3
+            time += context * modifier
+        #TODO check for but eg. I ate food before I played piano but after I killed someone. 
+        # only want first one becasue we can just infer the other one. 
         parity = None
         for x in parity_map.keys():
             if x in tmp_arg:
                 parity = parity_map[x]
+                break
+
         try:
-            return parity * context * modifier
+            return (parity,time)
         except TypeError:
             return None
 
@@ -290,14 +310,8 @@ class AllenSRL:
     def get_temporal_arguments(self,words, tags):
         ret = []
         for i, t in enumerate(tags):
-            if t == "B-ARGM-TMP":
-                end = i + 1
-                for j in range(i+1, len(tags)):
-                    if tags[j] == "I-ARGM-TMP":
-                        end = j + 1
-                    else:
-                        break
-                ret.append(words[i:end])
+            if t == "B-ARGM-TMP" or t == "I-ARGM-TMP":
+                ret.append(words[i])
         return ret
 
     '''
@@ -305,7 +319,8 @@ class AllenSRL:
     returns the index (beggining,end) of the temporal argument
     '''
     def get_temporal_index(self,words, tags):
-        ret = None
+        ret = []
+        temp = None
         for i, t in enumerate(tags):
             if t == "B-ARGM-TMP":
                 end = i + 1
@@ -314,7 +329,8 @@ class AllenSRL:
                         end = j + 1
                     else:
                         break
-                ret = (i,end)
+                temp = (i,end)
+                ret.append(temp)
         return ret
     '''
     takes the words and tags 
@@ -350,10 +366,11 @@ class AllenSRL:
                 counter += 1
             if counter == number:
                 tempargs = self.get_temporal_arguments(words,i['tags'])
+                print(tempargs)
                 if len(tempargs) == 0:
                     return None
                 else:
-                    return parser.parse_reference_date(tempargs[0])
+                    return parser.parse_reference_date(tempargs)
 
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today
@@ -397,7 +414,7 @@ class AllenSRL:
                 if len(tempargs) == 0:
                     return None
                 else:
-                    return parser.parse_comparative_timepoint(tempargs[0])
+                    return parser.parse_comparative_timepoint(tempargs)
 
         
 
@@ -411,19 +428,57 @@ class AllenSRL:
             prediction = self.predictor.predict_tokenized(sentence)
             words = prediction['words']
             verb_relation = self.get_verbs(prediction)
+
+
             absolute = {}
             hasNone = True
             
             for verb_index in verb_relation.keys():
                 temp = self.predict_absolute(sentence,verb_index,prediction)
                 if temp != None:
-                    hasNone = False
+                    if not TimeStruct.is_empty(temp):
+                        hasNone = False
                 absolute[verb_index] = temp
+
+            # 
+            for verb_index in verb_relation.keys():
+                if len(verb_relation[verb_index]) > 0:
+                    if not (TimeStruct.is_empty(absolute[verb_index])) and TimeStruct.is_empty(absolute[verb_relation[verb_index][0]]):
+                        comparison = self.predict_comparison(sentence, verb_index,prediction)
+                        x = TimeStruct.copy(absolute[verb_index])
+                        print(comparison)
+                        try:
+                            if comparison[1] == 0:
+                                None * 1
+                            x.second = (comparison[0] * comparison[1]) 
+                            absolute[verb_relation[verb_index][0]] = x
+                        except TypeError:
+                            if comparison[0] != None:
+                                x.second = comparison[0]
+                                absolute[verb_relation[verb_index][0]]= x
+                    if TimeStruct.is_empty(absolute[verb_index]) and not TimeStruct.is_empty(absolute[verb_relation[verb_index][0]]):
+                        comparison = self.predict_comparison(sentence, verb_relation[verb_index][0],prediction)
+                        x = TimeStruct.copy(absolute[verb_relation[verb_index][0]])
+                        try: 
+                            if comparison[1] == 0:
+                                None * 1
+                            x.second = - (comparison[0] * comparison[1]) 
+                            absolute[verb_index] = x
+                        except TypeError:
+                            if comparison[0] != None:
+                                x.second = -1 *  comparison[0]
+                                absolute[verb_index] = x
+                    #TODO add a case where both have absolute times, so you fill in the things that are missng. 
+
+
+
 
             for verb_index in verb_relation.keys():
                 #TODO I want to make it so that if we have an event object x with [y,z] inside of it, y has a absolute time and x doesn't and x has a comparitive time then x will now have a aboslute. 
                 graph[(i,verb_index)] = EventObject((i,verb_index),words[verb_index],absolute[verb_index],self.predict_comparison(sentence,verb_index,prediction),verb_relation[verb_index])
         self.graph = graph
+        for x in graph.keys():
+            print(graph[x])
 
     '''
     taks in two verb indexes and 
@@ -432,25 +487,33 @@ class AllenSRL:
     def compare_events(self,verbinx1,verbinx2):
         graph = self.graph
 
-        for x in graph.keys():
-            print(graph[x])
+        
 
         if (verbinx1 not in list(graph.keys())) or (verbinx2 not in list(graph.keys())):
             print('no')
             return None
         else:
             #case 1 one of the verbs is inside the othe verb and thus we shall return the comparitive if it existsm 
+            #TODO make the subtract better
             if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
                 print('no2')
                 return verbinx1.subtract(verbinx2)
-            print(verbinx1[0])
             if verbinx1[0] == verbinx2[0]:
-                print('hey')
                 if verbinx2[1] in graph[verbinx1].related_events:
                     print('lol')
-                    return graph[verbinx1].comparison_time
+                    try:
+                        if graph[verbinx1].comparison_time[1] == 0:
+                            return graph[verbinx1].comparison_time[0]
+                        return graph[verbinx1].comparison_time[0] * graph[verbinx1].comparison_time[1]
+                    except TypeError:
+                        return None
                 elif verbinx1[1] in graph[verbinx2].related_events:
-                    return graph[verbinx2].comparison_time
+                    try:
+                        if graph[verbinx2].comparison_time[1] == 0:
+                            return -1 * graph[verbinx2].comparison_time[0]
+                        return graph[verbinx2].comparison_time[0] * graph[verbinx2].comparison_time[1]
+                    except TypeError:
+                        return None
         return None
 
 
@@ -471,19 +534,21 @@ class AllenSRL:
             verb_map[verb_obj['verb']] = (self.get_verb_index(words,tags),self.get_temporal_index(words,tags))
             ret[verb_map[verb_obj['verb']][0]] = []
         for verb in verb_map.items():
-            if verb[1][1] != None:
+            if len(verb[1][1]) != 0:
                 for testverb in verb_map.items():
                     verblocation = verb[1][0]
                     testverblocation = testverb[1][0]
                     if verblocation != testverblocation:
-                        if testverb[1][0] >= verb[1][1][0] and testverb[1][0] < verb[1][1][1]:
-                            ret[verb[1][0]].append(testverb[1][0])
+                        for x in verb[1][1]:
+                            if testverb[1][0] >= x[0] and testverb[1][0] < x[1]:
+                                ret[verb[1][0]].append(testverb[1][0])
 
         return ret
             
 if __name__ == "__main__":
     srl = AllenSRL()
-    srl.get_graph(["I cheated on my girlfriend 5 days before we celebrated our anniversary".split(" ")],"hey")
-    x = srl.compare_events((0,1),(0,9))
+    srl.get_graph(["I ate food on october 5 before I played piano then I ran".split(" ")],"hey")
+    #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
+    x = srl.compare_events((0,1),(0,7))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
