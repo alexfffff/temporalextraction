@@ -60,10 +60,13 @@ class TimeStruct:
             array.append(0)
         else:
             array.append(self.minute)
-        if self.second == None:
+        try:
+            if self.second == None:
+                array.append(0)
+            else:
+                array.append(self.second)
+        except AttributeError:
             array.append(0)
-        else:
-            array.append(self.second)
 
         return array[0] * convert_map['years'] + (array[1]) * convert_map['months']+ array[2] * convert_map['days']  + array[3] * convert_map['hours'] + array[4] * convert_map['minutes'] + array[5]
 
@@ -74,6 +77,8 @@ class TimeStruct:
 
     def subtract(self,compare):
         # TODO we only want to subtract the things that they share, october 26 2002 and october 27 is most likeley just 1 day apart. 
+        return TimeStruct.get_date(compare) - TimeStruct.get_date(self)
+
         return compare.get_date - self.get_date
 
     def copy(self):
@@ -439,10 +444,14 @@ class AllenSRL:
 
             absolute = {}
             hasNone = True
-            
+            assumed_year = doc_time.year
             for verb_index in verb_relation.keys():
                 temp = self.predict_absolute(sentence,verb_index,prediction)
                 if temp != None:
+                    if temp.year != None:
+                        assumed_year = temp.year
+                    else:
+                        temp.year = assumed_year
                     if not TimeStruct.is_empty(temp):
                         hasNone = False
                 absolute[verb_index] = temp
@@ -503,7 +512,6 @@ class AllenSRL:
             #TODO make the subtract better
             if verbinx1[0] == verbinx2[0]:
                 if verbinx2[1] in graph[verbinx1].related_events:
-                    print('lol')
                     try:
                         if graph[verbinx1].comparison_time[1] == 0:
                             return graph[verbinx1].comparison_time[0]
@@ -518,7 +526,7 @@ class AllenSRL:
                     except TypeError:
                         return None
             if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
-                return TimeStruct.subtract(verbinx1,verbinx2)
+                return TimeStruct.subtract(graph[verbinx1].absolute_time,graph[verbinx2].absolute_time)
         return None
 
 
@@ -553,8 +561,10 @@ class AllenSRL:
 
 if __name__ == "__main__":
     srl = AllenSRL()
-    srl.get_graph(["I ate food on october 5 before I played piano then I ran".split(" ")],"hey")
+    #srl.get_graph(["I ate food on october 5 before I played piano then I ran".split(" ")],"hey")
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
-    x = srl.compare_events((0,1),(0,8))
+    doctime = TimeStruct(None,None,None,None,2002)
+    srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
+    x = srl.compare_events((0,1),(1,1))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
