@@ -216,14 +216,15 @@ def extract_in(toks):
     month = None
     for i, t in enumerate(toks):
         if t == "in" and i < len(toks) - 1:
+            if year is not None or month is not None:
+                break
             if toks[i+1] in months:
                 month = months[toks[i+1]]
                 if i+2 < len(toks):
                     year = get_int_val(toks[i+2])
             else:
                 year = get_int_val(toks[i+1])
-            if year is not None or month is not None:
-                break
+            
 
     return TimeStruct(None, None, None, month, year)
 
@@ -247,6 +248,8 @@ def extract_on(toks):
                             year = intval
                         elif 0 < intval < 32:
                             date = intval
+            if date != None or year != None or month != None:
+                break
     return TimeStruct(None, None, date, month, year)
 
 

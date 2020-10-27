@@ -125,13 +125,10 @@ class Parser:
     def parse_reference_date(self, tmp_arg):
         months = {'januray': 1, 'jan':1, 'feburary':2, 'feb':2, 'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12}
         result = TimeStruct(None,None,None,None,None)
-        if 'in' in tmp_arg:
-            result = parser.extract_in(tmp_arg)
-        elif 'at' in tmp_arg:
-            result = parser.extract_at(tmp_arg)
-        elif 'on' in tmp_arg:
-            result = parser.extract_on(tmp_arg)
-
+        t_1 = parser.extract_on(tmp_arg)
+        t_2 = parser.extract_in(tmp_arg)
+        t_3 = parser.extract_at(tmp_arg)
+        result = parser.combine_timex([t_1, t_2, t_3])
         # check if it doenst have the signpost words 
         #problem: cant differentiate between day month and year if there is a number, is 9 september 2009 or the 9th day. 
 
@@ -561,10 +558,11 @@ class AllenSRL:
 
 if __name__ == "__main__":
     srl = AllenSRL()
-    #srl.get_graph(["I ate food on october 5 before I played piano then I ran".split(" ")],"hey")
+    doctime = TimeStruct(None,None,None,None,2002)
+    srl.get_graph(["I ate food on october 5 before I played piano on october 20 2003 then I ran".split(" ")],doctime)
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
-    srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
-    x = srl.compare_events((0,1),(1,1))
+    #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
+    x = srl.compare_events((0,1),(0,8))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
