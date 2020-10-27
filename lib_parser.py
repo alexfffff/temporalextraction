@@ -254,8 +254,8 @@ class Parser:
         #TODO check for but eg. I ate food before I played piano but after I killed someone. 
         # only want first one becasue we can just infer the other one. 
         parity = None
-        for x in parity_map.keys():
-            if x in tmp_arg:
+        for x in tmp_arg:
+            if x in parity_map.keys():
                 parity = parity_map[x]
                 break
 
@@ -499,14 +499,13 @@ class AllenSRL:
     '''
     def compare_events(self,verbinx1,verbinx2):
         graph = self.graph
-
-        
-
         if (verbinx1 not in list(graph.keys())) or (verbinx2 not in list(graph.keys())):
             return None
         else:
             #case 1 one of the verbs is inside the othe verb and thus we shall return the comparitive if it existsm 
             #TODO make the subtract better
+            if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
+                return TimeStruct.subtract(graph[verbinx1].absolute_time,graph[verbinx2].absolute_time)
             if verbinx1[0] == verbinx2[0]:
                 if verbinx2[1] in graph[verbinx1].related_events:
                     try:
@@ -522,8 +521,7 @@ class AllenSRL:
                         return graph[verbinx2].comparison_time[0] * graph[verbinx2].comparison_time[1]
                     except TypeError:
                         return None
-            if graph[verbinx1].absolute_time != None and graph[verbinx2].absolute_time != None:
-                return TimeStruct.subtract(graph[verbinx1].absolute_time,graph[verbinx2].absolute_time)
+            
         return None
 
 
