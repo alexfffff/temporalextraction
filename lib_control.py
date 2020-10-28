@@ -240,10 +240,6 @@ class CogCompTimeBackend:
                 timex_relation = self.alex_srl.compare_events(
                     event_i[:2], event_j[:2]
                 )
-                if timex_relation > 0:
-                    timex_relation = 0.0
-                if timex_relation < 0:
-                    timex_relation = 1.0
 
                 if timex_relation is None:
                     if event_id_i < event_id_j:
@@ -253,6 +249,10 @@ class CogCompTimeBackend:
                         key = "{},{}".format(str(event_id_j), str(event_id_i))
                         value = prediction[1]
                 else:
+                    if timex_relation > 0:
+                        timex_relation = 0.0
+                    if timex_relation < 0:
+                        timex_relation = 1.0
                     if event_id_i < event_id_j:
                         key = "{},{}".format(str(event_id_i), str(event_id_j))
                         value = float(timex_relation)
