@@ -523,6 +523,56 @@ class AllenSRL:
                         return None
             
         return None
+    
+
+    '''
+    takes in a verbinx
+    returns None if the verb index doesn't have a absolute time, returns keyerror
+    '''
+    def get_absolute_time(self,verbinx):
+        graph = self.graph
+        try:
+            ret = graph[verbinx].absolute_time
+            year = None
+            month = None
+            day = None
+            hour = None
+            min = None
+            second = None
+        
+            if ret == None:
+                return None
+            if ret.year != None:
+                year = ret.year
+            else:
+                year = "xxxx"
+            if ret.month != None:
+                month = ret.month
+            else:
+                month = "xx"
+            if ret.day != None:
+                day = ret.day
+            else:
+                day = "xx"
+            if ret.minute != None:
+                min = ret.minute
+            else:
+                min = "xx"
+            if ret.hour != None:
+                hour = ret.hour
+            else:
+                hour = "xx"
+            try:
+                if self.second != None:
+                    second = ret.second
+                else:
+                    second = "x"
+            except AttributeError:
+                second = "x"
+            return "({}/{}/{} {}:{} + {})".format(str(month), str(day), str(year), str(hour), str(min),str(second))
+             
+        except KeyError:
+            return None
 
 
 
@@ -561,6 +611,6 @@ if __name__ == "__main__":
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
     #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
-    x = srl.compare_events((0,1),(0,8))
+    x = srl.get_absolute_time((0,1))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
