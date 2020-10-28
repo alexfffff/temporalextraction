@@ -1,5 +1,5 @@
 from tracie_model.start_predictor import Predictor
-from lib_parser import PretrainedModel, AllenSRL
+from lib_parser import PretrainedModel, AllenSRL, TimeStruct
 import random
 import spacy
 import torch
@@ -129,14 +129,17 @@ class CogCompTimeBackend:
         self.spacy_model = spacy.load("en_core_web_sm", disable='ner')
         self.alex_srl = AllenSRL(server_mode=True)
 
-    def parse_srl(self, text):
-        doc = self.spacy_model(text)
-        sentences = []
-        for sent in doc.sents:
-            toks = []
-            for tok in sent:
-                toks.append(str(tok))
-            sentences.append(toks)
+    def parse_srl(self, text, pre_sentencized=False):
+        if not pre_sentencized:
+            doc = self.spacy_model(text)
+            sentences = []
+            for sent in doc.sents:
+                toks = []
+                for tok in sent:
+                    toks.append(str(tok))
+                sentences.append(toks)
+        else:
+            sentences = text
 
         srl_objs = []
         for sentence in sentences:
@@ -155,11 +158,21 @@ class CogCompTimeBackend:
                     cur_id += 1
         return ret, cur_id
 
+    def extract_events_given(self, given_events, sentences):
+        ret = {}
+        cur_id = 0
+        for event in given_events:
+            ret[cur_id] = [event[0], event[1], sentences[event[0]][event[1]]]
+            cur_id += 1
+        return ret
+
     def format_model_phrase(self, event, srl):
         phrase = ""
         for verb in srl['verbs']:
             if get_verb_index(verb['tags']) == event[1]:
                 phrase = get_skeleton_phrase(verb['tags'], srl['words'])
+        if phrase == "":
+            phrase = event[2]
         return phrase
 
     '''
@@ -176,7 +189,94 @@ class CogCompTimeBackend:
                     g.addEdge(i, j)
                 else:
                     g.addEdge(j, i)
-        return g.topologicalSort() 
+        return g.topologicalSort()
+
+    '''
+    input:
+    @sentences: a list of list of tokens. [['i', 'am', 'sentence', 'one'], ['i', 'am', 'sentence', 'two']]
+    @indices: a list of verbs (sent_id, tok_id) [(0, 1), (1, 1)] for the two 'am's.
+    return:
+    @temporal_relation: a list of binary comparisons [(0, 1, distance), (1, 0, distance)]
+    '''
+    def build_graph_with_events(self, sentences, indices):
+        sentences, srl_objs = self.parse_srl(sentences, pre_sentencized=True)
+        story = get_story(srl_objs)
+        event_map = self.extract_events_given(indices, sentences)
+
+        all_event_ids = list(event_map.keys())
+        to_process_instances = []
+        for event_id_i in all_event_ids:
+            for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
+                phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
+                instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story)
+                to_process_instances.append(instance)
+
+        results = self.predictor.predict(to_process_instances)
+        results_distance = self.predictor.predict(to_process_instances, distance=True)
+
+        edge_map = {}
+        distance_map = {}
+        it = 0
+        tokens = []
+        for obj in srl_objs:
+            tokens.append(list(obj['words']))
+        dct = TimeStruct(None, None, 1, 10, 2020)
+        self.alex_srl.get_graph(tokens, dct)
+        for event_id_i in all_event_ids:
+            for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
+                prediction = results[it]
+                prediction_distance = results_distance[it]
+                distance_map[(event_id_i, event_id_i)] = prediction_distance
+                it += 1
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                timex_relation = self.alex_srl.compare_events(
+                    event_i[:2], event_j[:2]
+                )
+                if timex_relation > 0:
+                    timex_relation = 0.0
+                if timex_relation < 0:
+                    timex_relation = 1.0
+
+                if timex_relation is None:
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = prediction[0]
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = prediction[1]
+                else:
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = float(timex_relation)
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = 1.0 - float(timex_relation)
+                if key not in edge_map:
+                    edge_map[key] = 0.0
+                edge_map[key] += value
+        directed_edge_map = {}
+        for edge in edge_map:
+            if edge_map[edge] < 1.0:
+                key = "{},{}".format(edge.split(",")[1], edge.split(",")[0])
+                directed_edge_map[key] = (2.0 - edge_map[edge]) / 2.0
+            else:
+                directed_edge_map[edge] = edge_map[edge] / 2.0
+
+        sorted_edges = self.ilp_sort(directed_edge_map)
+        print(sorted_edges)
+        # ret = []
+        # for event_id in sorted_edges:
+        #     event_obj = event_map[event_id]
+        #     ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
+        # return ret
 
     def build_graph(self, text):
         print("Received Text: {}".format(text))
@@ -255,4 +355,12 @@ class CogCompTimeBackend:
 
 if __name__ == "__main__":
     backend = CogCompTimeBackend()
-    backend.build_graph("George Lowe, the last surviving member of the team which first conquered Everest, died in Ripley after a long-term illness, with his wife Mary by his side. The last British climbing member of the team, Mike Westmacott, died last June. Mr. Lowe worked as an Inspector of Schools with the Department of Education and Sciences.")
+    backend.build_graph_with_events(
+        [
+            "I went to the park on January 1 .".split(),
+            "I was really tired .".split(),
+            "But luckily , I purchased enough food 2 days before I went to the park .".split(),
+            "I wrote a review for the park and I plan to go again tomorrow .".split(),
+        ],
+        [(0, 1), (1, 1), (2, 4), (2, 11), (3, 1), (3, 11)]
+    )

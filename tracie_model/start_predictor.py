@@ -74,11 +74,16 @@ class Predictor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model_path = ""
         self.model = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/start_point_35k"
+            "/shared/public/ben/start_point_35k_matres"
         ).to(self.device)
+        self.model_distance = T5ForConditionalGeneration.from_pretrained(
+            "/shared/public/ben/start_point_35k"
+        )
         self.tokenizer = AutoTokenizer.from_pretrained("t5-large")
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.eval()
+        self.model_distance.resize_token_embeddings(len(self.tokenizer))
+        self.model_distance.eval()
         self.data_collator = CustomDataCollator()
 
     def softmax(self, a_list):
@@ -89,7 +94,7 @@ class Predictor:
 
     # Input: a list of lines
     # Return: a list of [pos, neg] probabilities
-    def predict(self, lines):
+    def predict(self, lines, distance=False):
         eval_dataset = get_dataset(lines, self.tokenizer)
         sampler = SequentialSampler(eval_dataset)
         data_loader = DataLoader(
@@ -103,14 +108,27 @@ class Predictor:
             for k, v in inputs.items():
                 inputs[k] = v.to(self.device)
             with torch.no_grad():
-                outputs = self.model(
-                    input_ids=inputs['input_ids'],
-                    attention_mask=inputs['attention_mask'],
-                    decoder_input_ids=inputs['decoder_input_ids'],
-                    decoder_attention_mask=inputs['decoder_attention_mask'],
-                )[0].cpu().numpy()
-                for output in outputs:
-                    ret.append(self.softmax([output[2][1465], output[2][2841]]))
+                if not distance:
+                    outputs = self.model(
+                        input_ids=inputs['input_ids'],
+                        attention_mask=inputs['attention_mask'],
+                        decoder_input_ids=inputs['decoder_input_ids'],
+                        decoder_attention_mask=inputs['decoder_attention_mask'],
+                    )[0].cpu().numpy()
+                    for output in outputs:
+                        ret.append(self.softmax([output[2][1465], output[2][2841]]))
+                else:
+                    outputs = self.model_distance(
+                        input_ids=inputs['input_ids'],
+                        attention_mask=inputs['attention_mask'],
+                        decoder_input_ids=inputs['decoder_input_ids'],
+                        decoder_attention_mask=inputs['decoder_attention_mask'],
+                    )[0].cpu().numpy()
+                    for output in outputs:
+                        arr = []
+                        for val in [32000, 32001, 32002, 32003, 32004, 32005, 32006]:
+                            arr.append(output[3][val])
+                        ret.append(self.softmax(arr))
         return ret
 
 
