@@ -23,7 +23,7 @@ class CustomDataCollator(DataCollator):
         decoder_inputs = []
         for i in range(0, len(features)):
             decoder_inputs.append([0, 1525, 10] + [0] * (input_ids.size()[1] - 3))
-            decoder_attention_mask.append([1, 1, 1, 1] + [0] * (input_ids.size()[1] - 4))
+            decoder_attention_mask.append([1, 1, 1, 1, 1] + [0] * (input_ids.size()[1] - 5))
         decoder_inputs = torch.tensor(decoder_inputs, dtype=torch.long)
         decoder_attention_mask = torch.tensor(decoder_attention_mask, dtype=torch.long)
         return {
@@ -79,11 +79,16 @@ class Predictor:
         self.model_distance = T5ForConditionalGeneration.from_pretrained(
             "/shared/public/ben/start_point_35k"
         )
+        self.model_duration = T5ForConditionalGeneration.from_pretrained(
+            "/shared/public/ben/duration_30k"
+        )
         self.tokenizer = AutoTokenizer.from_pretrained("t5-large")
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.eval()
         self.model_distance.resize_token_embeddings(len(self.tokenizer))
         self.model_distance.eval()
+        self.model_duration.resize_token_embeddings(len(self.tokenizer))
+        self.model_duration.eval()
         self.data_collator = CustomDataCollator()
 
     def softmax(self, a_list):
@@ -94,7 +99,7 @@ class Predictor:
 
     # Input: a list of lines
     # Return: a list of [pos, neg] probabilities
-    def predict(self, lines, distance=False):
+    def predict(self, lines, query_type="order"):
         eval_dataset = get_dataset(lines, self.tokenizer)
         sampler = SequentialSampler(eval_dataset)
         data_loader = DataLoader(
@@ -108,7 +113,7 @@ class Predictor:
             for k, v in inputs.items():
                 inputs[k] = v.to(self.device)
             with torch.no_grad():
-                if not distance:
+                if query_type == "order":
                     outputs = self.model(
                         input_ids=inputs['input_ids'],
                         attention_mask=inputs['attention_mask'],
@@ -117,7 +122,7 @@ class Predictor:
                     )[0].cpu().numpy()
                     for output in outputs:
                         ret.append(self.softmax([output[2][1465], output[2][2841]]))
-                else:
+                elif query_type == "distance":
                     outputs = self.model_distance(
                         input_ids=inputs['input_ids'],
                         attention_mask=inputs['attention_mask'],
@@ -128,6 +133,18 @@ class Predictor:
                         arr = []
                         for val in [32000, 32001, 32002, 32003, 32004, 32005, 32006]:
                             arr.append(output[3][val])
+                        ret.append(self.softmax(arr))
+                else:
+                    outputs = self.model_distance(
+                        input_ids=inputs['input_ids'],
+                        attention_mask=inputs['attention_mask'],
+                        decoder_input_ids=inputs['decoder_input_ids'],
+                        decoder_attention_mask=inputs['decoder_attention_mask'],
+                    )[0].cpu().numpy()
+                    for output in outputs:
+                        arr = []
+                        for val in [32000, 32001, 32002, 32003, 32004, 32005, 32006]:
+                            arr.append(output[2][val])
                         ret.append(self.softmax(arr))
         return ret
 

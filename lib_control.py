@@ -14,11 +14,17 @@ def get_verb_index(tags):
     return -1
 
 
-def get_skeleton_phrase(tags, words):
+def get_skeleton_phrase(tags, words, normalize_verb=False):
     ret = ""
     for i, tok in enumerate(words):
-        if tags[i] != "O" and "ARGM-TMP" not in tags[i]:
+        if tags[i] != "O" and "ARGM-TMP" not in tags[i] and "B-V" not in tags[i]:
             ret += tok + " "
+        if tags[i] == "B-V":
+            # TODO: in the future
+            if normalize_verb:
+                ret += tok + " "
+            else:
+                ret += tok + " "
     return ret.strip()
 
 
@@ -175,6 +181,16 @@ class CogCompTimeBackend:
             phrase = event[2]
         return phrase
 
+    def format_duration_phrase(self, event, srl):
+        phrase = ""
+        for verb in srl['verbs']:
+            if get_verb_index(verb['tags']) == event[1]:
+                phrase = get_skeleton_phrase(verb['tags'], srl['words'], normalize_verb=True)
+        # TODO: normalize verb
+        if phrase == "":
+            phrase = event[2]
+        return phrase
+
     '''
     input: edge map 
     {"0,1":0.1} means an edge from index 0 to index 1 with weight 0.1
@@ -190,6 +206,24 @@ class CogCompTimeBackend:
                 else:
                     g.addEdge(j, i)
         return g.topologicalSort()
+
+    def get_argmax_unit(self, probabilities):
+        keys = {
+            0: "minutes",
+            1: "hours",
+            2: "days",
+            3: "weeks",
+            4: "months",
+            5: "years",
+            6: "decades",
+        }
+        max_i = -1
+        max_v = 0.0
+        for i, v in enumerate(probabilities):
+            if v > max_v:
+                max_i = i
+                max_v = v
+        return keys[max_i]
 
     '''
     input:
@@ -216,8 +250,18 @@ class CogCompTimeBackend:
                 instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story)
                 to_process_instances.append(instance)
 
+        to_process_duration = []
+        for event_id_i in all_event_ids:
+            phrase = self.format_duration_phrase(event_id_i, srl_objs[event_id_i][0])
+            to_process_duration.append("event: {} story: {} \t nothing".format(phrase, story))
+
         results = self.predictor.predict(to_process_instances)
-        results_distance = self.predictor.predict(to_process_instances, distance=True)
+        results_distance = self.predictor.predict(to_process_instances, query_type="distance")
+        results_duration = self.predictor.predict(to_process_duration, query_type="duration")
+
+        duration_map = {}
+        for i, event_id_i in enumerate(all_event_ids):
+            duration_map[event_id_i] = self.get_argmax_unit(results_duration[i])
 
         edge_map = {}
         distance_map = {}
@@ -233,7 +277,7 @@ class CogCompTimeBackend:
                     continue
                 prediction = results[it]
                 prediction_distance = results_distance[it]
-                distance_map[(event_id_i, event_id_i)] = prediction_distance
+                distance_map[(event_id_i, event_id_j)] = prediction_distance
                 it += 1
                 event_i = event_map[event_id_i]
                 event_j = event_map[event_id_j]
@@ -271,12 +315,19 @@ class CogCompTimeBackend:
                 directed_edge_map[edge] = edge_map[edge] / 2.0
 
         sorted_edges = self.ilp_sort(directed_edge_map)
+        single_verb_map = {}
+        relation_map = {}
+        for i in range(0, len(sorted_edges)):
+            timex = str(self.alex_srl.get_absolute_time(event_map[sorted_edges[i]][:2]))
+            duration = duration_map[sorted_edges[i]]
+            single_verb_map[sorted_edges[i]] = [timex, duration]
+            for j in range(i+1, len(sorted_edges)):
+                distance = self.get_argmax_unit(distance_map[(sorted_edges[i], sorted_edges[j])])
+                relation_map[(sorted_edges[i], sorted_edges[j])] = ["before", distance]
+                relation_map[(sorted_edges[j], sorted_edges[i])] = ["after", distance]
         print(sorted_edges)
-        # ret = []
-        # for event_id in sorted_edges:
-        #     event_obj = event_map[event_id]
-        #     ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
-        # return ret
+        print(single_verb_map)
+        print(relation_map)
 
     def build_graph(self, text):
         print("Received Text: {}".format(text))
