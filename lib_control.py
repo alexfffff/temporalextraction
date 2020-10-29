@@ -252,7 +252,8 @@ class CogCompTimeBackend:
 
         to_process_duration = []
         for event_id_i in all_event_ids:
-            phrase = self.format_duration_phrase(event_id_i, srl_objs[event_id_i][0])
+            event_i = event_map[event_id_i]
+            phrase = self.format_duration_phrase(event_id_i, srl_objs[event_i][0])
             to_process_duration.append("event: {} story: {} \t nothing".format(phrase, story))
 
         results = self.predictor.predict(to_process_instances)
