@@ -375,11 +375,16 @@ class AllenSRL:
                 counter += 1
             if counter == number:
                 tempargs = self.get_temporal_arguments(words,i['tags'])
-                print(tempargs)
+                
                 if len(tempargs) == 0:
                     return None
                 else:
-                    return parser.parse_reference_date(tempargs)
+                    absolute =  parser.parse_reference_date(tempargs)
+                    return absolute
+                    #if absolute == None:
+                        #TODO flajsdlfajsda
+                    
+
 
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today
@@ -431,8 +436,15 @@ class AllenSRL:
     takes in a array of sentence arrays 
     returns a array of event objects
     '''
-    def get_graph(self,tokens,doc_time):
+    def get_graph(self,tokens1,doc_time):
+        tokens = []
+        for x in tokens1:
+            temp = []
+            for y in x:
+                temp.append(y.lower())
+            tokens.append(temp)
         graph = {}
+        assumed_year = doc_time.year
         for i, sentence in enumerate(tokens):
             prediction = self.predictor.predict_tokenized(sentence)
             words = prediction['words']
@@ -441,7 +453,7 @@ class AllenSRL:
 
             absolute = {}
             hasNone = True
-            assumed_year = doc_time.year
+
             for verb_index in verb_relation.keys():
                 temp = self.predict_absolute(sentence,verb_index,prediction)
                 if temp != None:
@@ -607,10 +619,10 @@ class AllenSRL:
 if __name__ == "__main__":
     srl = AllenSRL()
     doctime = TimeStruct(None,None,None,None,2002)
-    srl.get_graph(["I ate food on october 5 before I played piano on october 20 2003 then I ran".split(" ")],doctime)
+    srl.get_graph(["But luckily , I purchased enough food 2 days before I went to the park .".split(" ")],doctime)
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
     #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
-    x = srl.get_absolute_time((0,1))
+    x = srl.compare_events((0,4),(0,11))
     print(x)
     #print(srl.comparison_predict(["I ate dinner on october 26 2002".split(" "),"I ran outside on october 25 2002".split(" ")],(0,1),(1,1)))
