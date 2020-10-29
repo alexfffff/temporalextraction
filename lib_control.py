@@ -283,7 +283,7 @@ class CogCompTimeBackend:
                 event_i = event_map[event_id_i]
                 event_j = event_map[event_id_j]
                 timex_relation = self.alex_srl.compare_events(
-                    event_i[:2], event_j[:2]
+                    (event_i[0], event_i[1]), (event_j[0], event_j[1])
                 )
 
                 if timex_relation is None:
@@ -319,7 +319,7 @@ class CogCompTimeBackend:
         single_verb_map = {}
         relation_map = {}
         for i in range(0, len(sorted_edges)):
-            input_arg = (event_map[sorted_edges[i][0]], event_map[sorted_edges[i][1]])
+            input_arg = (event_map[sorted_edges[i]][0], event_map[sorted_edges[i]][1])
             timex = str(self.alex_srl.get_absolute_time(input_arg))
             duration = duration_map[sorted_edges[i]]
             single_verb_map[sorted_edges[i]] = [timex, duration]

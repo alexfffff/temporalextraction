@@ -530,7 +530,6 @@ class AllenSRL:
     returns None if the verb index doesn't have a absolute time, returns keyerror
     '''
     def get_absolute_time(self,verbinx):
-        print("Input: ".format(str(verbinx)))
         graph = self.graph
         try:
             ret = graph[verbinx].absolute_time
