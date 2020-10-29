@@ -123,7 +123,7 @@ class Parser:
     '''
             
     def parse_reference_date(self, tmp_arg):
-        months = {'januray': 1, 'jan':1, 'feburary':2, 'feb':2, 'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12}
+        months = {'january': 1, 'jan':1, 'feburary':2, 'feb':2, 'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12}
         result = TimeStruct(None,None,None,None,None)
         t_1 = parser.extract_on(tmp_arg)
         t_2 = parser.extract_in(tmp_arg)
@@ -619,7 +619,7 @@ class AllenSRL:
 if __name__ == "__main__":
     srl = AllenSRL()
     doctime = TimeStruct(None,None,None,None,2002)
-    srl.get_graph(["But luckily , I purchased enough food 2 days before I went to the park .".split(" ")],doctime)
+    srl.get_graph(["I went to the park on january 1 .".split(" ")],doctime)
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
     #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
