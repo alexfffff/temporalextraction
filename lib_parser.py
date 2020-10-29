@@ -436,7 +436,13 @@ class AllenSRL:
     takes in a array of sentence arrays 
     returns a array of event objects
     '''
-    def get_graph(self,tokens,doc_time):
+    def get_graph(self,tokens1,doc_time):
+        tokens = []
+        for x in tokens1:
+            temp = []
+            for y in x:
+                temp.append(y.lower())
+            tokens.append(temp)
         graph = {}
         assumed_year = doc_time.year
         for i, sentence in enumerate(tokens):
