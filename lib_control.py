@@ -343,3 +343,9 @@ if __name__ == "__main__":
         ],
         [(0, 1), (1, 1), (2, 4), (2, 11), (3, 1), (3, 11)]
     )
+    '''
+    This prints three things: 
+    - sorted_edges: [3, 0, 1, 2, 5, 4]
+    - single_verb_map: {3: ['None', 'years'], 0: ['(xx/1/2020 xx:xx + x)', 'years'], 1: ['None', 'years'], 2: ['None', 'years'], 5: ['None', 'years'], 4: ['None', 'years']}
+    - relation_map: {(3, 0): ['before', 'days'], (0, 3): ['after', 'days'], (3, 1): ['before', 'days'], (1, 3): ['after', 'days'], (3, 2): ['before', 'days'], (2, 3): ['after', 'days'], (3, 5): ['before', 'weeks'], (5, 3): ['after', 'weeks'], (3, 4): ['before', 'weeks'], (4, 3): ['after', 'weeks'], (0, 1): ['before', 'days'], (1, 0): ['after', 'days'], (0, 2): ['before', 'days'], (2, 0): ['after', 'days'], (0, 5): ['before', 'weeks'], (5, 0): ['after', 'weeks'], (0, 4): ['before', 'weeks'], (4, 0): ['after', 'weeks'], (1, 2): ['before', 'weeks'], (2, 1): ['after', 'weeks'], (1, 5): ['before', 'weeks'], (5, 1): ['after', 'weeks'], (1, 4): ['before', 'weeks'], (4, 1): ['after', 'weeks'], (2, 5): ['before', 'weeks'], (5, 2): ['after', 'weeks'], (2, 4): ['before', 'weeks'], (4, 2): ['after', 'weeks'], (5, 4): ['before', 'weeks'], (4, 5): ['after', 'weeks']}
+    '''
