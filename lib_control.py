@@ -225,6 +225,23 @@ class CogCompTimeBackend:
                 max_v = v
         return keys[max_i]
 
+    def get_averaged_val(self, probabilities):
+        # in minutes
+        values = {
+            0: 1.0,
+            1: 60.0,
+            2: 24.0 * 60.0,
+            3: 7.0 * 24.0 * 60.0,
+            4: 30.0 * 24.0 * 60.0,
+            5: 365.0 * 24.0 * 60.0,
+            6: 10.0 * 365.0 * 24.0 * 60.0
+        }
+        values = [math.log(x) for x in values]
+        s = 0.0
+        for i, v in enumerate(probabilities):
+            s += v * values[i]
+        return math.exp(s)
+
     '''
     input:
     @sentences: a list of list of tokens. [['i', 'am', 'sentence', 'one'], ['i', 'am', 'sentence', 'two']]
@@ -262,7 +279,7 @@ class CogCompTimeBackend:
 
         duration_map = {}
         for i, event_id_i in enumerate(all_event_ids):
-            duration_map[event_id_i] = self.get_argmax_unit(results_duration[i])
+            duration_map[event_id_i] = self.get_averaged_val(results_duration[i])
 
         edge_map = {}
         distance_map = {}
@@ -324,7 +341,7 @@ class CogCompTimeBackend:
             duration = duration_map[sorted_edges[i]]
             single_verb_map[sorted_edges[i]] = [timex, duration]
             for j in range(i+1, len(sorted_edges)):
-                distance = self.get_argmax_unit(distance_map[(sorted_edges[i], sorted_edges[j])])
+                distance = self.get_averaged_val(distance_map[(sorted_edges[i], sorted_edges[j])])
                 relation_map[(sorted_edges[i], sorted_edges[j])] = ["before", distance]
                 relation_map[(sorted_edges[j], sorted_edges[i])] = ["after", distance]
         print(sorted_edges)
