@@ -225,6 +225,24 @@ class CogCompTimeBackend:
                 max_v = v
         return keys[max_i]
 
+    def get_averaged_val(self, probabilities):
+        # in minutes
+        values = {
+            0: 1.0,
+            1: 60.0,
+            2: 24.0 * 60.0,
+            3: 7.0 * 24.0 * 60.0,
+            4: 30.0 * 24.0 * 60.0,
+            5: 365.0 * 24.0 * 60.0,
+            6: 10.0 * 365.0 * 24.0 * 60.0
+        }
+        for k in values:
+            values[k] = math.log(values[k])
+        s = 0.0
+        for i, v in enumerate(probabilities):
+            s += v * values[i]
+        return math.exp(s)
+
     '''
     input:
     @sentences: a list of list of tokens. [['i', 'am', 'sentence', 'one'], ['i', 'am', 'sentence', 'two']]
@@ -232,7 +250,7 @@ class CogCompTimeBackend:
     return:
     @temporal_relation: a list of binary comparisons [(0, 1, distance), (1, 0, distance)]
     '''
-    def build_graph_with_events(self, sentences, indices):
+    def build_graph_with_events(self, sentences, indices, dct=None):
         sentences, srl_objs = self.parse_srl(sentences, pre_sentencized=True)
         story = get_story(srl_objs)
         event_map = self.extract_events_given(indices, sentences)
@@ -262,7 +280,7 @@ class CogCompTimeBackend:
 
         duration_map = {}
         for i, event_id_i in enumerate(all_event_ids):
-            duration_map[event_id_i] = self.get_argmax_unit(results_duration[i])
+            duration_map[event_id_i] = self.get_averaged_val(results_duration[i])
 
         edge_map = {}
         distance_map = {}
@@ -270,7 +288,10 @@ class CogCompTimeBackend:
         tokens = []
         for obj in srl_objs:
             tokens.append(list(obj['words']))
-        dct = TimeStruct(None, None, 1, 10, 2020)
+        if dct is None:
+            dct = TimeStruct(None, None, 1, 10, 2020)
+        else:
+            dct = TimeStruct(None, None, int(dct.split("-")[2]), int(dct.split("-")[1]), int(dct.split("-")[0]))
         self.alex_srl.get_graph(tokens, dct)
         for event_id_i in all_event_ids:
             for event_id_j in all_event_ids:
@@ -324,7 +345,7 @@ class CogCompTimeBackend:
             duration = duration_map[sorted_edges[i]]
             single_verb_map[sorted_edges[i]] = [timex, duration]
             for j in range(i+1, len(sorted_edges)):
-                distance = self.get_argmax_unit(distance_map[(sorted_edges[i], sorted_edges[j])])
+                distance = self.get_averaged_val(distance_map[(sorted_edges[i], sorted_edges[j])])
                 relation_map[(sorted_edges[i], sorted_edges[j])] = ["before", distance]
                 relation_map[(sorted_edges[j], sorted_edges[i])] = ["after", distance]
         print(sorted_edges)
@@ -341,11 +362,6 @@ if __name__ == "__main__":
             "But luckily , I purchased enough food 2 days before I went to the park .".split(),
             "I wrote a review for the park and I plan to go again tomorrow .".split(),
         ],
-        [(0, 1), (1, 1), (2, 4), (2, 11), (3, 1), (3, 11)]
+        [(0, 1), (1, 1), (2, 4), (2, 11), (3, 1), (3, 11)],
+        dct="2020-10-28"
     )
-    '''
-    This prints three things: 
-    - sorted_edges: [3, 0, 1, 2, 5, 4]
-    - single_verb_map: {3: ['None', 'years'], 0: ['(xx/1/2020 xx:xx + x)', 'years'], 1: ['None', 'years'], 2: ['None', 'years'], 5: ['None', 'years'], 4: ['None', 'years']}
-    - relation_map: {(3, 0): ['before', 'days'], (0, 3): ['after', 'days'], (3, 1): ['before', 'days'], (1, 3): ['after', 'days'], (3, 2): ['before', 'days'], (2, 3): ['after', 'days'], (3, 5): ['before', 'weeks'], (5, 3): ['after', 'weeks'], (3, 4): ['before', 'weeks'], (4, 3): ['after', 'weeks'], (0, 1): ['before', 'days'], (1, 0): ['after', 'days'], (0, 2): ['before', 'days'], (2, 0): ['after', 'days'], (0, 5): ['before', 'weeks'], (5, 0): ['after', 'weeks'], (0, 4): ['before', 'weeks'], (4, 0): ['after', 'weeks'], (1, 2): ['before', 'weeks'], (2, 1): ['after', 'weeks'], (1, 5): ['before', 'weeks'], (5, 1): ['after', 'weeks'], (1, 4): ['before', 'weeks'], (4, 1): ['after', 'weeks'], (2, 5): ['before', 'weeks'], (5, 2): ['after', 'weeks'], (2, 4): ['before', 'weeks'], (4, 2): ['after', 'weeks'], (5, 4): ['before', 'weeks'], (4, 5): ['after', 'weeks']}
-    '''
