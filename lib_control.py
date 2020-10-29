@@ -319,7 +319,8 @@ class CogCompTimeBackend:
         single_verb_map = {}
         relation_map = {}
         for i in range(0, len(sorted_edges)):
-            timex = str(self.alex_srl.get_absolute_time(event_map[sorted_edges[i]][:2]))
+            input_arg = (event_map[sorted_edges[i][0]], event_map[sorted_edges[i][1]])
+            timex = str(self.alex_srl.get_absolute_time(input_arg))
             duration = duration_map[sorted_edges[i]]
             single_verb_map[sorted_edges[i]] = [timex, duration]
             for j in range(i+1, len(sorted_edges)):
@@ -329,80 +330,6 @@ class CogCompTimeBackend:
         print(sorted_edges)
         print(single_verb_map)
         print(relation_map)
-
-    def build_graph(self, text):
-        print("Received Text: {}".format(text))
-        sentences, srl_objs = self.parse_srl(text)
-        print("SRL Parsed")
-        story = get_story(srl_objs)
-        for i in range(0, len(sentences)):
-            for j in range(0, len(sentences[i])):
-                assert sentences[i][j] == srl_objs[i]['words'][j]
-        event_map, event_count = self.extract_events(srl_objs)
-        all_event_ids = list(event_map.keys())
-        to_process_instances = []
-        for event_id_i in all_event_ids:
-            for event_id_j in all_event_ids:
-                if event_id_i == event_id_j:
-                    continue
-                event_i = event_map[event_id_i]
-                event_j = event_map[event_id_j]
-                phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
-                phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
-                instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story)
-                to_process_instances.append(instance)
-
-        results = self.predictor.predict(to_process_instances)
-        edge_map = {}
-        it = 0
-        tokens = []
-        for obj in srl_objs:
-            tokens.append(list(obj['words']))
-        self.alex_srl.get_graph(tokens)
-        for event_id_i in all_event_ids:
-            for event_id_j in all_event_ids:
-                if event_id_i == event_id_j:
-                    continue
-                prediction = results[it]
-                it += 1
-                event_i = event_map[event_id_i]
-                event_j = event_map[event_id_j]
-                # timex_relation = None
-                timex_relation = self.alex_srl.compare_events(
-                    event_i[:2], event_j[:2]
-                )
-                if timex_relation is None:
-                    if event_id_i < event_id_j:
-                        key = "{},{}".format(str(event_id_i), str(event_id_j))
-                        value = prediction[0]
-                    else:
-                        key = "{},{}".format(str(event_id_j), str(event_id_i))
-                        value = prediction[1]
-                else:
-                    if event_id_i < event_id_j:
-                        key = "{},{}".format(str(event_id_i), str(event_id_j))
-                        value = float(timex_relation)
-                    else:
-                        key = "{},{}".format(str(event_id_j), str(event_id_i))
-                        value = 1.0 - float(timex_relation)
-                if key not in edge_map:
-                    edge_map[key] = 0.0
-                edge_map[key] += value
-        directed_edge_map = {}
-        for edge in edge_map:
-            if edge_map[edge] < 1.0:
-                key = "{},{}".format(edge.split(",")[1], edge.split(",")[0])
-                directed_edge_map[key] = (2.0 - edge_map[edge]) / 2.0
-            else:
-                directed_edge_map[edge] = edge_map[edge] / 2.0
-
-        sorted_edges = self.ilp_sort(directed_edge_map)
-        print(sorted_edges)
-        ret = []
-        for event_id in sorted_edges:
-            event_obj = event_map[event_id]
-            ret.append(self.format_model_phrase(event_obj, srl_objs[event_obj[0]]))
-        return ret
 
 
 if __name__ == "__main__":
