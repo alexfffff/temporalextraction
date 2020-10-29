@@ -152,6 +152,11 @@ class Parser:
                     month = months[x]
                 if (result.day is None) and (x.endswith('th') or x.endswith('st') or x.endswith('nd')):
                     day = x[:-2]
+                    try:
+                        float(day)
+                    except ValueError:
+                        day = None
+
                 if dateameric.match(x):
                     if len(x.split('/')) > 1:
                         if(len(x.split('/'))== 2):
@@ -263,11 +268,6 @@ class Parser:
             return (parity,time)
         except TypeError:
             return None
-
-
-        
-
-
     '''
     Parse comparative events, you may do it later
     e.g., before I graduated
@@ -291,10 +291,7 @@ class PretrainedModel:
     def predictor(self) -> Predictor:
         archive = load_archive(self.archive_file)
         return Predictor.from_archive(archive, self.predictor_name)
-
-
 class AllenSRL:
-
     def __init__(self, server_mode=False):
         if server_mode:
             model = PretrainedModel(
@@ -317,7 +314,7 @@ class AllenSRL:
     takes the words and tags to 
     return the temporal arguments if it exists
     '''
-    def get_temporal_arguments(self,words, tags):
+    def get_temporal_arguments(self, words, tags):
         ret = []
         for i, t in enumerate(tags):
             if t == "B-ARGM-TMP" or t == "I-ARGM-TMP":
@@ -328,7 +325,7 @@ class AllenSRL:
     takes the words and tags
     returns the index (beggining,end) of the temporal argument
     '''
-    def get_temporal_index(self,words, tags):
+    def get_temporal_index(self, words, tags):
         ret = []
         temp = None
         for i, t in enumerate(tags):
@@ -342,21 +339,23 @@ class AllenSRL:
                 temp = (i,end)
                 ret.append(temp)
         return ret
+
     '''
     takes the words and tags 
     returns the index of the verb
     '''
-    def get_verb_index(self,words,tags):
+    def get_verb_index(self, words, tags):
         ret = None
         for i, t in enumerate(tags):
             if t == "B-V":
                 ret = i
         return ret
+
     '''
     takes a sentence as a array(tokens), and the index of the target verb. replaces the 
     returns the timestructure of the predicted time that the verb happened
     '''
-    def predict_absolute(self,words,verb_index,prediction):
+    def predict_absolute(self, words, verb_index, prediction):
         #TODO lets add more 
         anchorwords ={
             "today":0,
@@ -398,14 +397,12 @@ class AllenSRL:
                                 absolute = doctime
                                 absolute.second = anchorwords[x]
                     return absolute
-                    
-
 
     '''
     takes the target timestruct and today and replaces the args that are non in the timestruct with today
     returns the updated timestruct
     '''
-    def replace(self,temargs,today):
+    def replace(self, temargs, today):
         if temargs == None:
             return None
         if temargs.year == None:
@@ -419,11 +416,12 @@ class AllenSRL:
         if temargs.minute == None:
             temargs.minute = today.minute
         return temargs
+
     '''
     takes the verb index and the sentence and the document time and prediction 
     returns the relative time difference between this verb and the verbs its related to
     '''
-    def predict_comparison(self,sentence,verb_index,prediction):
+    def predict_comparison(self, sentence, verb_index, prediction):
         parser = Parser()
         verb = sentence[verb_index]
         number = 0
@@ -445,13 +443,11 @@ class AllenSRL:
                 else:
                     return parser.parse_comparative_timepoint(tempargs)
 
-        
-
     '''
     takes in a array of sentence arrays 
     returns a array of event objects
     '''
-    def get_graph(self,tokens1,doc_time):
+    def get_graph(self, tokens1, doc_time):
         tokens = []
         self.doc_time = doc_time
         for x in tokens1:
@@ -511,9 +507,6 @@ class AllenSRL:
                                 absolute[verb_index] = x
                     #TODO add a case where both have absolute times, so you fill in the things that are missng. 
 
-
-
-
             for verb_index in verb_relation.keys():
                 #TODO I want to make it so that if we have an event object x with [y,z] inside of it, y has a absolute time and x doesn't and x has a comparitive time then x will now have a aboslute. 
                 graph[(i,verb_index)] = EventObject((i,verb_index),words[verb_index],absolute[verb_index],self.predict_comparison(sentence,verb_index,prediction),verb_relation[verb_index])
@@ -525,7 +518,7 @@ class AllenSRL:
     taks in two verb indexes and 
     retursn the distance between the two, positive if the second is later than the first or None if there isn't a defined differenece
     '''
-    def compare_events(self,verbinx1,verbinx2):
+    def compare_events(self, verbinx1, verbinx2):
         graph = self.graph
         if (verbinx1 not in list(graph.keys())) or (verbinx2 not in list(graph.keys())):
             return None
@@ -551,13 +544,12 @@ class AllenSRL:
                         return None
             
         return None
-    
 
     '''
     takes in a verbinx
     returns None if the verb index doesn't have a absolute time, returns keyerror
     '''
-    def get_absolute_time(self,verbinx):
+    def get_absolute_time(self, verbinx):
         graph = self.graph
         try:
             ret = graph[verbinx].absolute_time
@@ -601,17 +593,12 @@ class AllenSRL:
              
         except KeyError:
             return None
-
-
-
-
             
-
     '''
     takes a predicition object from a single sentence and
     returns a dict of the verbs and an array of the verbs contained in 
     '''
-    def get_verbs(self,prediction):
+    def get_verbs(self, prediction):
         words = prediction['words']
         ret = {}
         verb_map = {}
