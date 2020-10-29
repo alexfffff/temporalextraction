@@ -309,6 +309,7 @@ class AllenSRL:
                                 #'semantic-role-labeling')
         self.predictor = model.predictor()
         self.graph = None
+        self.doc_time = None
         #self.predictor._model = self.predictor._model.cuda()
         #self.output_path = output_path
 
@@ -356,6 +357,13 @@ class AllenSRL:
     returns the timestructure of the predicted time that the verb happened
     '''
     def predict_absolute(self,words,verb_index,prediction):
+        #TODO lets add more 
+        anchorwords ={
+            "today":0,
+            "tommorow": 24.0 * 60.0 * 60.0,
+            "yesterday": -1 * 24.0 * 60.0 * 60.0,
+
+        }
         parser = Parser()
         # figure out which duplicate the verb is
         verb = words[verb_index]
@@ -375,14 +383,21 @@ class AllenSRL:
                 counter += 1
             if counter == number:
                 tempargs = self.get_temporal_arguments(words,i['tags'])
-                
+                print(tempargs)
                 if len(tempargs) == 0:
                     return None
                 else:
                     absolute =  parser.parse_reference_date(tempargs)
+                    print(absolute)
+
+                    if absolute == None:
+                        print("hey")
+                        for x in tempargs:
+                            if x in anchorwords:
+                                
+                                absolute = doctime
+                                absolute.second = anchorwords[x]
                     return absolute
-                    #if absolute == None:
-                        #TODO flajsdlfajsda
                     
 
 
@@ -438,6 +453,7 @@ class AllenSRL:
     '''
     def get_graph(self,tokens1,doc_time):
         tokens = []
+        self.doc_time = doc_time
         for x in tokens1:
             temp = []
             for y in x:
@@ -619,7 +635,7 @@ class AllenSRL:
 if __name__ == "__main__":
     srl = AllenSRL()
     doctime = TimeStruct(None,None,None,None,2002)
-    srl.get_graph(["I went to the park on january 1 .".split(" ")],doctime)
+    srl.get_graph(["I went to the park yesterday .".split(" ")],doctime)
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
     #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
