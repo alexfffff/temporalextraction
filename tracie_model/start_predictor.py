@@ -71,17 +71,21 @@ def get_dataset(lines, tokenizer):
 class Predictor:
 
     def __init__(self):
+        config_lines = [x.strip() for x in open("../configs/model_paths.txt").readlines()]
+        config_map = {}
+        for l in config_lines:
+            config_map[l.split("\t")[0]] = l.split("\t")[1]
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model_path = ""
         self.model = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/start_point_35k_matres"
+            config_map['order_model']
         ).to(self.device)
         self.model_distance = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/start_point_25k_distance_improved"
-        )
+            config_map['distance_model']
+        ).to(self.device)
         self.model_duration = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/duration_30k"
-        )
+            config_map['duration_model']
+        ).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained("t5-large")
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.eval()

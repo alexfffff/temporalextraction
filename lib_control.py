@@ -352,6 +352,9 @@ class CogCompTimeBackend:
         print(single_verb_map)
         print(relation_map)
 
+    def kairos_wrapper(self, json_obj):
+        pass
+
 
 if __name__ == "__main__":
     backend = CogCompTimeBackend()
