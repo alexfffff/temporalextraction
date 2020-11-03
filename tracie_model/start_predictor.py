@@ -77,7 +77,7 @@ class Predictor:
             "/shared/public/ben/start_point_35k_matres"
         ).to(self.device)
         self.model_distance = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/start_point_35k"
+            "/shared/public/ben/start_point_25k_distance_improved"
         )
         self.model_duration = T5ForConditionalGeneration.from_pretrained(
             "/shared/public/ben/duration_30k"
@@ -135,7 +135,7 @@ class Predictor:
                             arr.append(output[3][val])
                         ret.append(self.softmax(arr))
                 else:
-                    outputs = self.model_distance(
+                    outputs = self.model_duration(
                         input_ids=inputs['input_ids'],
                         attention_mask=inputs['attention_mask'],
                         decoder_input_ids=inputs['decoder_input_ids'],
