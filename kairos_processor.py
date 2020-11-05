@@ -57,7 +57,9 @@ def process_kairos():
                 [doc_tokens, token_id]
             )
     all_srl_map = {}
-    for tokens in all_sentences:
+    for i, tokens in enumerate(all_sentences):
+        if i % 10 == 0:
+            print("SRL Processed {}".format(str(float(i) / len(all_sentences))))
         all_srl_map[" ".join(tokens)] = srl_model.predict_tokenized(tokens)
     all_event_ids = list(event_id_to_token_ids.keys())
     for i in range(0, len(all_event_ids)):
