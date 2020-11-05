@@ -68,6 +68,50 @@ def get_dataset(lines, tokenizer):
     return ret
 
 
+class RelationOnlyPredictor:
+    def __init__(self):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model = T5ForConditionalGeneration.from_pretrained(
+            "/shared/public/ben/start_point_35k_matres"
+        ).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained("t5-large")
+        self.model.resize_token_embeddings(len(self.tokenizer))
+        self.model.eval()
+        self.data_collator = CustomDataCollator()
+
+    def softmax(self, a_list):
+        a_sum = 0.0
+        for a in a_list:
+            a_sum += math.exp(a)
+        return [math.exp(x) / a_sum for x in a_list]
+
+    # Input: a list of lines
+    # Return: a list of [pos, neg] probabilities
+    def predict(self, lines, query_type="order"):
+        eval_dataset = get_dataset(lines, self.tokenizer)
+        sampler = SequentialSampler(eval_dataset)
+        data_loader = DataLoader(
+            eval_dataset,
+            sampler=sampler,
+            batch_size=4,
+            collate_fn=self.data_collator.collate_batch,
+        )
+        ret = []
+        for inputs in data_loader:
+            for k, v in inputs.items():
+                inputs[k] = v.to(self.device)
+            with torch.no_grad():
+                outputs = self.model(
+                    input_ids=inputs['input_ids'],
+                    attention_mask=inputs['attention_mask'],
+                    decoder_input_ids=inputs['decoder_input_ids'],
+                    decoder_attention_mask=inputs['decoder_attention_mask'],
+                )[0].cpu().numpy()
+                for output in outputs:
+                    ret.append(self.softmax([output[2][1465], output[2][2841]]))
+        return ret
+
+
 class Predictor:
 
     def __init__(self):
