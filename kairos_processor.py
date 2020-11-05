@@ -1,5 +1,6 @@
 from lib_parser import PretrainedModel, AllenSRL, TimeStruct
 from lib_control import get_story, get_verb_index, get_skeleton_phrase
+from tracie_model.start_predictor import RelationOnlyPredictor
 import random
 
 
@@ -39,6 +40,8 @@ def process_kairos():
     event_id_to_token_ids = {}
     added_story_ids = set()
     all_sentences = []
+    predictor = RelationOnlyPredictor()
+    f_out = open("results.txt", "w")
     for line in lines:
         groups = line.split("\t")
         event_id = groups[0]
@@ -90,7 +93,26 @@ def process_kairos():
                     phrase_i = format_model_phrase(i_srls[i_t[1][0]], i_t[1][1], story_raw_i[i_t[1][0]][i_t[1][1]])
                     phrase_j = format_model_phrase(j_srls[j_t[1][0]], j_t[1][1], story_raw_j[j_t[1][0]][j_t[1][1]])
                     instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story_i + " " + story_j)
-                    print(instance)
+
+                    to_process.append(instance)
+            results = predictor.predict(to_process)
+            total_before = 0.0
+            total_after = 0.0
+            for r in results:
+                total_before += r[0]
+                total_after += r[0]
+            prob_before = total_before / (total_before + total_after)
+            prob_after = total_after / (total_before + total_after)
+            if prob_before > prob_after:
+                label = "TEMPORAL_BEFORE"
+                prob = prob_before
+            else:
+                label = "TEMPORAL_AFTER"
+                prob = prob_after
+            f_out.write("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
+
+            key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
+            print("Done: " + key)
 
 
 process_kairos()
