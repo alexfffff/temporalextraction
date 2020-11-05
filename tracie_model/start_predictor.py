@@ -93,7 +93,7 @@ class RelationOnlyPredictor:
         data_loader = DataLoader(
             eval_dataset,
             sampler=sampler,
-            batch_size=4,
+            batch_size=8,
             collate_fn=self.data_collator.collate_batch,
         )
         ret = []

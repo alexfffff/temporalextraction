@@ -100,7 +100,7 @@ def process_kairos():
             total_after = 0.0
             for r in results:
                 total_before += r[0]
-                total_after += r[0]
+                total_after += r[1]
             prob_before = total_before / (total_before + total_after)
             prob_after = total_after / (total_before + total_after)
             if prob_before > prob_after:
@@ -110,6 +110,7 @@ def process_kairos():
                 label = "TEMPORAL_AFTER"
                 prob = prob_after
             f_out.write("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
+            f_out.flush()
 
             key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
             print("Done: " + key)
