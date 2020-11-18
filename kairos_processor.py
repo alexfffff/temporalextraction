@@ -1,7 +1,9 @@
 from lib_parser import PretrainedModel, AllenSRL, TimeStruct
 from lib_control import get_story, get_verb_index, get_skeleton_phrase
-from tracie_model.start_predictor import RelationOnlyPredictor
+# from tracie_model.start_predictor import RelationOnlyPredictor
 import random
+from gurobi_graph import *
+from lib_control import Graph
 
 
 def read_tokens_file_source(file_id):
@@ -31,17 +33,19 @@ def format_model_phrase(srl, verb_id, surface):
         phrase = surface
     return phrase
 
+
 def process_kairos():
-    srl_model = PretrainedModel(
-        'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
-        'semantic-role-labeling'
-    ).predictor()
+    # srl_model = PretrainedModel(
+    #     'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
+    #     'semantic-role-labeling'
+    # ).predictor()
     lines = [x.strip() for x in open("kairos_data/output/coref/event.cs").readlines()]
     event_id_to_token_ids = {}
     added_story_ids = set()
     all_sentences = []
-    predictor = RelationOnlyPredictor()
-    f_out = open("results.txt", "w")
+    alex_srl = AllenSRL(server_mode=True)
+    # predictor = RelationOnlyPredictor()
+    f_out = open("results_alex.txt", "w")
     for line in lines:
         groups = line.split("\t")
         event_id = groups[0]
@@ -59,61 +63,147 @@ def process_kairos():
             event_id_to_token_ids[event_id].append(
                 [doc_tokens, token_id]
             )
-    all_srl_map = {}
-    for i, tokens in enumerate(all_sentences):
-        if i % 10 == 0:
-            print("SRL Processed {}".format(str(float(i) / len(all_sentences))))
-        all_srl_map[" ".join(tokens)] = srl_model.predict_tokenized(tokens)
+    # all_srl_map = {}
+    # for i, tokens in enumerate(all_sentences):
+    #     if i % 10 == 0:
+    #         print("SRL Processed {}".format(str(float(i) / len(all_sentences))))
+    #     all_srl_map[" ".join(tokens)] = srl_model.predict_tokenized(tokens)
     all_event_ids = list(event_id_to_token_ids.keys())
+    alex_relation_map = {
+
+    }
     for i in range(0, len(all_event_ids)):
         for j in range(i+1, len(all_event_ids)):
             i_events = event_id_to_token_ids[all_event_ids[i]]
             j_events = event_id_to_token_ids[all_event_ids[j]]
             random.shuffle(i_events)
             random.shuffle(j_events)
-            if len(i_events) > 5:
-                i_events = i_events[:5]
-            if len(j_events) > 5:
-                j_events = j_events[:5]
-
-            to_process = []
+            if len(i_events) > 10:
+                i_events = i_events[:10]
+            if len(j_events) > 10:
+                j_events = j_events[:10]
             for i_t in i_events:
                 for j_t in j_events:
                     story_raw_i = i_t[0]
                     story_raw_j = j_t[0]
-                    i_srls = []
-                    for t in story_raw_i:
-                        i_srls.append(all_srl_map[" ".join(t)])
-                    j_srls = []
-                    for t in story_raw_j:
-                        j_srls.append(all_srl_map[" ".join(t)])
-                    story_i = get_story(i_srls, max_len=150)
-                    story_j = get_story(j_srls, max_len=150)
 
-                    phrase_i = format_model_phrase(i_srls[i_t[1][0]], i_t[1][1], story_raw_i[i_t[1][0]][i_t[1][1]])
-                    phrase_j = format_model_phrase(j_srls[j_t[1][0]], j_t[1][1], story_raw_j[j_t[1][0]][j_t[1][1]])
-                    instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story_i + " " + story_j)
-
-                    to_process.append(instance)
-            results = predictor.predict(to_process)
-            total_before = 0.0
-            total_after = 0.0
-            for r in results:
-                total_before += r[0]
-                total_after += r[1]
-            prob_before = total_before / (total_before + total_after)
-            prob_after = total_after / (total_before + total_after)
-            if prob_before > prob_after:
-                label = "TEMPORAL_BEFORE"
-                prob = prob_before
+                    sentence_i = story_raw_i[i_t[1][0]]
+                    sentence_j = story_raw_j[j_t[1][0]]
+                    all_tokens = []
+                    if " ".join(sentence_i) == " ".join(sentence_j):
+                        all_tokens.append(sentence_i)
+                        anchor_i = (0, i_t[1][1])
+                        anchor_j = (0, j_t[1][1])
+                    else:
+                        all_tokens = [sentence_i, sentence_j]
+                        anchor_i = (0, i_t[1][1])
+                        anchor_j = (1, j_t[1][1])
+                    dct = TimeStruct(None, None, 1, 10, 2020)
+                    alex_srl.get_graph(all_tokens, dct)
+                    time_relation = alex_srl.compare_events(
+                        anchor_i, anchor_j
+                    )
+                    if time_relation is not None:
+                        key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
+                        if key not in alex_relation_map:
+                            alex_relation_map[key] = []
+                        alex_relation_map[key].append(time_relation)
+    for key in alex_relation_map:
+        s = 0.0
+        c = 0.0
+        for it in alex_relation_map[key]:
+            if it > 0:
+                time_relation = -1.0
             else:
-                label = "TEMPORAL_AFTER"
-                prob = prob_after
-            f_out.write("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
-            f_out.flush()
+                time_relation = 1.0
+            s += time_relation
+            c += 1.0
+        f_out.write(key + "\t" + str(s / c) + "\n")
+            # random.shuffle(i_events)
+            # random.shuffle(j_events)
+            # if len(i_events) > 5:
+            #     i_events = i_events[:5]
+            # if len(j_events) > 5:
+            #     j_events = j_events[:5]
+            #
+            # to_process = []
+            # for i_t in i_events:
+            #     for j_t in j_events:
+            #         story_raw_i = i_t[0]
+            #         story_raw_j = j_t[0]
+            #         i_srls = []
+            #         for t in story_raw_i:
+            #             i_srls.append(all_srl_map[" ".join(t)])
+            #         j_srls = []
+            #         for t in story_raw_j:
+            #             j_srls.append(all_srl_map[" ".join(t)])
+            #         story_i = get_story(i_srls, max_len=150)
+            #         story_j = get_story(j_srls, max_len=150)
+            #
+            #         phrase_i = format_model_phrase(i_srls[i_t[1][0]], i_t[1][1], story_raw_i[i_t[1][0]][i_t[1][1]])
+            #         phrase_j = format_model_phrase(j_srls[j_t[1][0]], j_t[1][1], story_raw_j[j_t[1][0]][j_t[1][1]])
+            #         instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story_i + " " + story_j)
+            #
+            #         to_process.append(instance)
+            # results = predictor.predict(to_process)
+            # total_before = 0.0
+            # total_after = 0.0
+            # for r in results:
+            #     total_before += r[0]
+            #     total_after += r[1]
+            # prob_before = total_before / (total_before + total_after)
+            # prob_after = total_after / (total_before + total_after)
+            # if prob_before > prob_after:
+            #     label = "TEMPORAL_BEFORE"
+            #     prob = prob_before
+            # else:
+            #     label = "TEMPORAL_AFTER"
+            #     prob = prob_after
+            # f_out.write("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
+            # f_out.flush()
+            #
+            # key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
+            # print("Done: " + key)
 
-            key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
-            print("Done: " + key)
+
+def ilp_sort(edges):
+    output = gurobi_opt(edges).gurobi_output()
+    g = Graph(output.shape[0])
+    for i in range(0, output.shape[0]):
+        for j in range(i+1, output.shape[0]):
+            if output[i][j][0] == 1.0:
+                g.addEdge(i, j)
+            else:
+                g.addEdge(j, i)
+    return g.topologicalSort()
 
 
-process_kairos()
+def close_constraint():
+    lines = [x.strip() for x in open("results.txt").readlines()]
+    directed_edge_map = {}
+    f_out = open("result_constrained.txt", "w")
+    id_to_event_id = {}
+    for line in lines:
+        group = line.split("\t")
+        id_1 = int(group[0].split("_")[1])
+        id_to_event_id[id_1] = group[0]
+        id_2 = int(group[2].split("_")[1])
+        id_to_event_id[id_2] = group[2]
+        if group[1] == "TEMPORAL_BEFORE":
+            key = "{},{}".format(str(id_1), str(id_2))
+            directed_edge_map[key] = float(group[3])
+        else:
+            key = "{},{}".format(str(id_2), str(id_1))
+            directed_edge_map[key] = float(group[3])
+
+    s = ilp_sort(directed_edge_map)
+    for i in range(0, len(s) - 1):
+        id_1 = i
+        id_2 = i + 1
+        f_out.write(id_to_event_id[id_1] + "\tTEMPORAL_BEFORE\t" + id_to_event_id[id_2] + "\t1.0\n")
+
+
+close_constraint()
+
+
+
