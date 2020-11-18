@@ -132,17 +132,37 @@ def ilp_sort(edges):
     return g.topologicalSort()
 
 
+def get_id_to_cluster():
+    lines = [x.strip() for x in open("kairos_data/new/coref/event.cs").readlines()]
+    id_map = {}
+    k1 = ["K0C041O3D", "K0C047Z5A", "K0C041O37"]
+    k2 = ["K0C041NHW", "K0C047Z57", "K0C041NHY", "K0C047Z59", "K0C041NHV"]
+    for line in lines:
+        group = line.split("\t")
+        if len(group) > 3:
+            if group[3].startswith("K0C"):
+                gid = group[3].split(":")[0]
+                if gid in k1:
+                    id_map[group[0]] = 1
+                if gid in k2:
+                    id_map[group[0]] = 2
+    return id_map
+
+
 def close_constraint():
-    lines = [x.strip() for x in open("results.txt").readlines()]
+    lines = [x.strip() for x in open("results_new.txt").readlines()]
     directed_edge_map = {}
-    f_out = open("result_constrained.txt", "w")
+    f_out = open("result_constrained_1.txt", "w")
     id_to_event_id = {}
+    id_map = get_id_to_cluster()
     for line in lines:
         group = line.split("\t")
         id_1 = int(group[0].split("_")[1])
         id_to_event_id[id_1] = group[0]
         id_2 = int(group[2].split("_")[1])
         id_to_event_id[id_2] = group[2]
+        if id_map[group[0]] != 1 or id_map[group[2]] != 1:
+            continue
         if group[1] == "TEMPORAL_BEFORE":
             key = "{},{}".format(str(id_1), str(id_2))
             directed_edge_map[key] = float(group[3])
@@ -158,6 +178,3 @@ def close_constraint():
 
 
 close_constraint()
-
-
-
