@@ -2,6 +2,8 @@ from lib_parser import PretrainedModel, AllenSRL, TimeStruct
 from lib_control import get_story, get_verb_index, get_skeleton_phrase
 from tracie_model.start_predictor import RelationOnlyPredictor
 import random
+from gurobi_graph import *
+from lib_control import Graph
 
 
 def read_tokens_file_source(file_id):
@@ -31,17 +33,19 @@ def format_model_phrase(srl, verb_id, surface):
         phrase = surface
     return phrase
 
+
 def process_kairos():
     srl_model = PretrainedModel(
         'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
         'semantic-role-labeling'
     ).predictor()
-    lines = [x.strip() for x in open("kairos_data/output/coref/event.cs").readlines()]
+    lines = [x.strip() for x in open("kairos_data/new/coref/event.cs").readlines()]
     event_id_to_token_ids = {}
     added_story_ids = set()
     all_sentences = []
+    alex_srl = AllenSRL(server_mode=True)
     predictor = RelationOnlyPredictor()
-    f_out = open("results.txt", "w")
+    f_out = open("results_new.txt", "w")
     for line in lines:
         groups = line.split("\t")
         event_id = groups[0]
@@ -71,10 +75,10 @@ def process_kairos():
             j_events = event_id_to_token_ids[all_event_ids[j]]
             random.shuffle(i_events)
             random.shuffle(j_events)
-            if len(i_events) > 5:
-                i_events = i_events[:5]
-            if len(j_events) > 5:
-                j_events = j_events[:5]
+            if len(i_events) > 10:
+                i_events = i_events[:10]
+            if len(j_events) > 10:
+                j_events = j_events[:10]
 
             to_process = []
             for i_t in i_events:
@@ -116,4 +120,61 @@ def process_kairos():
             print("Done: " + key)
 
 
-process_kairos()
+def ilp_sort(edges):
+    output = gurobi_opt(edges).gurobi_output()
+    g = Graph(output.shape[0])
+    for i in range(0, output.shape[0]):
+        for j in range(i+1, output.shape[0]):
+            if output[i][j][0] == 1.0:
+                g.addEdge(i, j)
+            else:
+                g.addEdge(j, i)
+    return g.topologicalSort()
+
+
+def get_id_to_cluster():
+    lines = [x.strip() for x in open("kairos_data/new/coref/event.cs").readlines()]
+    id_map = {}
+    k1 = ["K0C041O3D", "K0C047Z5A", "K0C041O37"]
+    k2 = ["K0C041NHW", "K0C047Z57", "K0C041NHY", "K0C047Z59", "K0C041NHV"]
+    for line in lines:
+        group = line.split("\t")
+        if len(group) > 3:
+            if group[3].startswith("K0C"):
+                gid = group[3].split(":")[0]
+                if gid in k1:
+                    id_map[group[0]] = 1
+                if gid in k2:
+                    id_map[group[0]] = 2
+    return id_map
+
+
+def close_constraint():
+    lines = [x.strip() for x in open("results_new.txt").readlines()]
+    directed_edge_map = {}
+    f_out = open("result_constrained_1.txt", "w")
+    id_to_event_id = {}
+    id_map = get_id_to_cluster()
+    for line in lines:
+        group = line.split("\t")
+        id_1 = int(group[0].split("_")[1])
+        id_to_event_id[id_1] = group[0]
+        id_2 = int(group[2].split("_")[1])
+        id_to_event_id[id_2] = group[2]
+        if id_map[group[0]] != 1 or id_map[group[2]] != 1:
+            continue
+        if group[1] == "TEMPORAL_BEFORE":
+            key = "{},{}".format(str(id_1), str(id_2))
+            directed_edge_map[key] = float(group[3])
+        else:
+            key = "{},{}".format(str(id_2), str(id_1))
+            directed_edge_map[key] = float(group[3])
+
+    s = ilp_sort(directed_edge_map)
+    for i in range(0, len(s) - 1):
+        id_1 = i
+        id_2 = i + 1
+        f_out.write(id_to_event_id[id_1] + "\tTEMPORAL_BEFORE\t" + id_to_event_id[id_2] + "\t1.0\n")
+
+
+close_constraint()
