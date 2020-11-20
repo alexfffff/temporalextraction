@@ -4,6 +4,7 @@ from allennlp.models.archival import load_archive
 from allennlp.predictors import Predictor
 from datetime import date
 from word2number import w2n
+from datetime import datetime
 '''
 An example of the data structure, it's up to you to use it or not
 '''
@@ -14,7 +15,7 @@ class TimeStruct:
         self.day = day
         self.month = month
         self.year = year
-        self.second = None
+        self.second = 0
     
     def __str__(self):
         return "({} {} {} {}:{}, {})".format(str(self.year), str(self.month), str(self.day), str(self.hour), str(self.minute),str(self.second))
@@ -224,7 +225,7 @@ class Parser:
             "after": -1,
             "next": -1,
             "since": -1,
-             "past":-1,
+            "past":-1,
             "then": -1,
             "prior": 1,
             "ago":1,
@@ -232,7 +233,6 @@ class Parser:
             "before": 1,
             "while": 0,
             "and": 0,
-           
         }
         
         # assumption: that the word before days/years/etc. will be the number 
@@ -268,6 +268,54 @@ class Parser:
             return (parity,time)
         except TypeError:
             return None
+
+    def parse_relative_timepoint(self,temp_arg):
+        convert_map = {
+            "second": 1.0,
+            "seconds": 1.0,
+            "minute": 60.0,
+            "minutes": 60.0,
+            "hour": 60.0 * 60.0,
+            "hours": 60.0 * 60.0,
+            "day": 24.0 * 60.0 * 60.0,
+            "days": 24.0 * 60.0 * 60.0,
+            "week": 7.0 * 24.0 * 60.0 * 60.0,
+            "weeks": 7.0 * 24.0 * 60.0 * 60.0,
+            "month": 30.0 * 24.0 * 60.0 * 60.0,
+            "months": 30.0 * 24.0 * 60.0 * 60.0,
+            "year": 365.0 * 24.0 * 60.0 * 60.0,
+            "years": 365.0 * 24.0 * 60.0 * 60.0,
+            "decade": 10.0 * 365.0 * 24.0 * 60.0 * 60.0,
+            "decades": 10.0 * 365.0 * 24.0 * 60.0 * 60.0,
+            "century": 100.0 * 365.0 * 24.0 * 60.0 * 60.0,
+            "centuries": 100.0 * 365.0 * 24.0 * 60.0 * 60.0,
+        } 
+        convert_map = {
+            "sunday": 24.0 * 60.0 * 60.0,
+            "monday": 24.0 * 60.0 * 60.0,
+            "tuesday": 24.0 * 60.0 * 60.0,
+            "wensday" : 24.0 * 60.0 * 60.0,
+
+        }
+        parity_map = {
+            "last":-1,
+            "next":1,
+            "this":0,
+            "on":0,
+            "later": -1,
+            "after": -1,
+            "next": -1,
+            "since": -1,
+            "past":-1,
+            "then": -1,
+            "prior": 1,
+            "ago":1,
+            "earlier": 1,
+            "before": 1,
+            "while": 0,
+            "and": 0,
+        }
+
     '''
     Parse comparative events, you may do it later
     e.g., before I graduated
@@ -355,13 +403,12 @@ class AllenSRL:
     takes a sentence as a array(tokens), and the index of the target verb. replaces the 
     returns the timestructure of the predicted time that the verb happened
     '''
-    def predict_absolute(self, words, verb_index, prediction):
+    def predict_absolute(self, words, verb_index, prediction,doctime):
         #TODO lets add more 
         anchorwords ={
             "today":0,
             "tommorow": 24.0 * 60.0 * 60.0,
             "yesterday": -1 * 24.0 * 60.0 * 60.0,
-
         }
         parser = Parser()
         # figure out which duplicate the verb is
@@ -382,20 +429,18 @@ class AllenSRL:
                 counter += 1
             if counter == number:
                 tempargs = self.get_temporal_arguments(words,i['tags'])
-                print(tempargs)
                 if len(tempargs) == 0:
                     return None
                 else:
+
                     absolute =  parser.parse_reference_date(tempargs)
-                    print(absolute)
 
                     if absolute == None:
-                        print("hey")
                         for x in tempargs:
                             if x in anchorwords:
                                 
                                 absolute = doctime
-                                absolute.second = anchorwords[x]
+                                absolute.second += anchorwords[x]
                     return absolute
 
     '''
@@ -443,11 +488,32 @@ class AllenSRL:
                 else:
                     return parser.parse_comparative_timepoint(tempargs)
 
+    def predict_relative(self,sentence,verb_index,prediction):
+        parser = Parser()
+        verb = sentence[verb_index]
+        number = 0
+        tempargs = []
+        for i, x in enumerate(sentence):
+            if x == verb and i != verb_index:
+                number += 1
+            elif i == verb_index:
+                number += 1
+                break
+        counter = 0
+        for i in prediction['verbs']:
+            if i['verb'] == verb:
+                counter += 1
+            if counter == number:
+                tempargs = self.get_temporal_arguments(sentence,i['tags'])
+                if len(tempargs) == 0:
+                    return None
+                else:
+                    return parser.parse_comparative_timepoint(tempargs)
     '''
     takes in a array of sentence arrays 
     returns a array of event objects
     '''
-    def get_graph(self, tokens1, doc_time):
+    def get_graph(self, tokens1, doc_time, debugmode= False):
         tokens = []
         self.doc_time = doc_time
         for x in tokens1:
@@ -457,17 +523,19 @@ class AllenSRL:
             tokens.append(temp)
         graph = {}
         assumed_year = doc_time.year
+
         for i, sentence in enumerate(tokens):
             prediction = self.predictor.predict_tokenized(sentence)
             words = prediction['words']
             verb_relation = self.get_verbs(prediction)
+ 
 
 
             absolute = {}
             hasNone = True
 
             for verb_index in verb_relation.keys():
-                temp = self.predict_absolute(sentence,verb_index,prediction)
+                temp = self.predict_absolute(sentence,verb_index,prediction,doc_time)
                 if temp != None:
                     if temp.year != None:
                         assumed_year = temp.year
@@ -483,15 +551,14 @@ class AllenSRL:
                     if not (TimeStruct.is_empty(absolute[verb_index])) and TimeStruct.is_empty(absolute[verb_relation[verb_index][0]]):
                         comparison = self.predict_comparison(sentence, verb_index,prediction)
                         x = TimeStruct.copy(absolute[verb_index])
-                        print(comparison)
                         try:
                             if comparison[1] == 0:
                                 None * 1
-                            x.second = (comparison[0] * comparison[1]) 
+                            x.second += (comparison[0] * comparison[1]) 
                             absolute[verb_relation[verb_index][0]] = x
                         except TypeError:
                             if comparison[0] != None:
-                                x.second = comparison[0]
+                                x.second += comparison[0]
                                 absolute[verb_relation[verb_index][0]]= x
                     if TimeStruct.is_empty(absolute[verb_index]) and not TimeStruct.is_empty(absolute[verb_relation[verb_index][0]]):
                         comparison = self.predict_comparison(sentence, verb_relation[verb_index][0],prediction)
@@ -499,20 +566,24 @@ class AllenSRL:
                         try: 
                             if comparison[1] == 0:
                                 None * 1
-                            x.second = - (comparison[0] * comparison[1]) 
+                            x.second += - (comparison[0] * comparison[1]) 
                             absolute[verb_index] = x
                         except TypeError:
                             if comparison[0] != None:
-                                x.second = -1 *  comparison[0]
+                                x.second += -1 *  comparison[0]
                                 absolute[verb_index] = x
                     #TODO add a case where both have absolute times, so you fill in the things that are missng. 
 
             for verb_index in verb_relation.keys():
-                #TODO I want to make it so that if we have an event object x with [y,z] inside of it, y has a absolute time and x doesn't and x has a comparitive time then x will now have a aboslute. 
                 graph[(i,verb_index)] = EventObject((i,verb_index),words[verb_index],absolute[verb_index],self.predict_comparison(sentence,verb_index,prediction),verb_relation[verb_index])
         self.graph = graph
-        for x in graph.keys():
-            print(graph[x])
+        if debugmode:
+            counter = 0
+            for x in graph.keys():
+                if (x[0] == counter):
+                    print(tokens1[counter])
+                    counter = counter + 1
+                print(graph[x])
 
     '''
     taks in two verb indexes and 
@@ -622,7 +693,7 @@ class AllenSRL:
 if __name__ == "__main__":
     srl = AllenSRL()
     doctime = TimeStruct(None,None,None,None,2002)
-    srl.get_graph(["I went to the park yesterday .".split(" ")],doctime)
+    srl.get_graph([['From', 'a', 'financial', 'standpoint', 'what', 'is', 'most', 'noteworthy', 'is', 'that', 'the', 'combined', 'debt', 'of', 'the', 'Cypriot', 'people', 'companies', 'and', 'government', 'is', '26', 'times', 'the', 'size', 'of', 'the', 'countrys', 'gross', 'domestic', 'product', 'Only', 'Ireland', 'still', 'struggling', 'to', 'recover', 'from', 'the', 'banking', 'collapse', 'that', 'required', 'an', 'international', 'bailout', 'in', '2010', 'has', 'a', 'higher', 'debttoGDP', 'ratio', 'among', 'euro', 'zone', 'countries']],doctime)
     #srl.get_graph(["I cheated on my girlfriend before we celebrated our anniversary".split(" ")],"hey")
     doctime = TimeStruct(None,None,None,None,2002)
     #srl.get_graph(["I ate food on october 5".split(), "I ran on october 10".split()], doctime)
