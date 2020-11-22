@@ -348,9 +348,7 @@ class CogCompTimeBackend:
                 distance = self.get_averaged_val(distance_map[(sorted_edges[i], sorted_edges[j])])
                 relation_map[(sorted_edges[i], sorted_edges[j])] = ["before", distance]
                 relation_map[(sorted_edges[j], sorted_edges[i])] = ["after", distance]
-        print(sorted_edges)
-        print(single_verb_map)
-        print(relation_map)
+        return single_verb_map, relation_map
 
     def kairos_wrapper(self, json_obj):
         pass

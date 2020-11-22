@@ -225,7 +225,6 @@ def extract_in(toks):
             else:
                 year = get_int_val(toks[i+1])
             
-
     return TimeStruct(None, None, None, month, year)
 
 

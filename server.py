@@ -82,24 +82,49 @@ class CogCompTimeDemoService:
             accu = len(sentences[i])
         views = args["views"]
         event_view = None
-        for view in views:
+        event_view_id = None
+        for i, view in enumerate(views):
             if view["viewName"] == "Event_extraction":
                 event_view = view
+                event_view_id = i
                 break
         if event_view is None:
             return args
         event_triggers = []
-        for constituent in event_view["viewData"][0]['constituents']:
+        con_id_to_json_id = {}
+        for i, constituent in enumerate(event_view["viewData"][0]['constituents']):
             start = constituent["start"]
             if "properties" in constituent:
-                event_triggers.append((constituent['properties']['sentence_id'], start))
+                key = (constituent['properties']['sentence_id'], start)
+                event_triggers.append(key)
+                if key not in con_id_to_json_id:
+                    con_id_to_json_id[key] = []
+                con_id_to_json_id[key].append(i)
         event_triggers = list(set(event_triggers))
         formatted_events = []
         for event in event_triggers:
             formatted_events.append(event)
-        relative_order = self.backend.build_graph_with_events(sentences, formatted_events, dct="2020-10-01")
+        single_verb_map, relation_map = self.backend.build_graph_with_events(sentences, formatted_events, dct="2020-10-01")
+        for back_id in single_verb_map:
+            trigger_key = formatted_events[back_id]
+            update_ids = con_id_to_json_id[trigger_key]
+            for uid in update_ids:
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration"] = int(single_verb_map[back_id][1])
+        for back_id_pair in relation_map:
+            source = back_id_pair[0]
+            dest = back_id_pair[1]
+            for s_uid in con_id_to_json_id[formatted_events[source]]:
+                for d_uid in con_id_to_json_id[formatted_events[dest]]:
+                    args["views"][event_view_id]["viewData"][0]["relations"].append(
+                        {
+                            "relationName": relation_map[back_id_pair][0],
+                            "srcConstituent": s_uid,
+                            "targetConstituent": d_uid,
+                            "properties": {"distance": int(relation_map[back_id_pair][1])}
+                        }
+                    )
 
-        return None
+        return args
 
     def start(self, localhost=False, port=80, ssl=False):
         self.app.add_url_rule("/", "", self.handle_index)
@@ -120,4 +145,4 @@ class CogCompTimeDemoService:
 
 if __name__ == "__main__":
     service = CogCompTimeDemoService()
-    service.start(localhost=True)
+    service.start(localhost=False, port=4013)
