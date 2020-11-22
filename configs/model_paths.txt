@@ -1,3 +1,3 @@
-order_model	/Volumes/SSD/models/start_point_35k_matres
-distance_model	/Volumes/SSD/models/start_point_25k_distance_improved
-duration_model /Volumes/SSD/models/duration_80k
+order_model	/shared/public/ben/final_matres
+distance_model	/shared/public/ben/final_distance
+duration_model /shared/public/ben/final_duration
