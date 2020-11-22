@@ -1,3 +1,3 @@
 order_model	/shared/public/ben/final_matres
 distance_model	/shared/public/ben/final_distance
-duration_model /shared/public/ben/final_duration
+duration_model	/shared/public/ben/final_duration
