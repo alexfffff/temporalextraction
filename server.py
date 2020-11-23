@@ -4,6 +4,8 @@ from flask import send_from_directory
 from flask_cors import CORS
 
 from lib_control import CogCompTimeBackend
+import argparse
+import sys
 
 
 class CogCompTimeDemoService:
@@ -144,5 +146,20 @@ class CogCompTimeDemoService:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('host_mode', metavar='N', type=int)
+    parser.add_argument('port', metavar='N', type=int)
+    args = parser.parse_args()
+    if args.host_mode == 0:
+        local_host = True
+        print("Initializing localhost")
+    elif args.host_mode == 1:
+        local_host = False
+        print("Initializing non-localhost")
+    else:
+        print("Argument 1 out of parameter. Please use 0 for localhost and 1 for non-localhost.")
+        sys.exit()
+    print("on port {}".format(str(args.port)))
+
     service = CogCompTimeDemoService()
-    service.start(localhost=False, port=4013)
+    service.start(localhost=local_host, port=args.port)

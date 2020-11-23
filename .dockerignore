@@ -1,0 +1,8 @@
+.git
+Dockerfile
+.DS_Store
+.gitignore
+.dockerignore
+/venv
+/kairos_data
+/samples
