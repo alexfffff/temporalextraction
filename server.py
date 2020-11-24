@@ -57,7 +57,10 @@ class CogCompTimeDemoService:
         stories = form['oneie']['en']['json']
         story_jsons = []
         for s in stories:
-            story_jsons[s] = [json.loads(x.strip()) for x in stories[s].split("\n")]
+            try:
+                story_jsons[s] = [json.loads(x.strip()) for x in stories[s].split("\n")]
+            except:
+                continue
         event_lines = [x.strip() for x in form['coref']['event.cs'].split("\n")]
         temporal_content = process_kairos(stories, event_lines)
         form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
