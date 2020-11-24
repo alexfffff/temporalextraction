@@ -62,6 +62,8 @@ def process_kairos(data_map, lines):
     out_lines = []
     for line in lines:
         groups = line.split("\t")
+        if len(groups) < 2:
+            continue
         event_id = groups[0]
         if groups[1] == "mention.actual":
             file_id = groups[3].split(":")[0]
