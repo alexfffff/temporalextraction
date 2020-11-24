@@ -22,7 +22,6 @@ Flask-Cors==3.0.9
 ftfy==5.8
 gevent==20.9.0
 greenlet==0.4.17
-gurobipy==8.1.0
 h5py==2.10.0
 idna==2.10
 imagesize==1.2.0

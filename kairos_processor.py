@@ -24,6 +24,24 @@ def read_tokens_file_source(file_id):
     return all_tokens, start_char_to_token
 
 
+def read_tokens_content_source(data_map, file_id):
+    lines = data_map[file_id].split("\n")
+    all_tokens = []
+    cur_tokens = []
+    start_char_to_token = {}
+    for line in lines:
+        if line.startswith("</SEG>"):
+            all_tokens.append(cur_tokens)
+            cur_tokens = []
+        if line.startswith("<TOKEN"):
+            start_char = int(line.split()[4].split('"')[1])
+            start_char_to_token[start_char] = (len(all_tokens), len(cur_tokens))
+            token = line.split()[-1].split(">")[1].split("<")[0]
+            cur_tokens.append(token)
+
+    return all_tokens, start_char_to_token
+
+
 def format_model_phrase(srl, verb_id, surface):
     phrase = ""
     for verb in srl['verbs']:
@@ -34,18 +52,16 @@ def format_model_phrase(srl, verb_id, surface):
     return phrase
 
 
-def process_kairos():
+def process_kairos(data_map, lines):
     srl_model = PretrainedModel(
         'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
         'semantic-role-labeling'
     ).predictor()
-    lines = [x.strip() for x in open("kairos_data/new/coref/event.cs").readlines()]
     event_id_to_token_ids = {}
     added_story_ids = set()
     all_sentences = []
-    alex_srl = AllenSRL(server_mode=True)
     predictor = RelationOnlyPredictor()
-    f_out = open("results_new.txt", "w")
+    out_lines = []
     for line in lines:
         groups = line.split("\t")
         event_id = groups[0]
@@ -54,7 +70,7 @@ def process_kairos():
                 event_id_to_token_ids[event_id] = []
             file_id = groups[3].split(":")[0]
             start_char = int(groups[3].split(":")[1].split("-")[0])
-            doc_tokens, start_char_to_token = read_tokens_file_source(file_id)
+            doc_tokens, start_char_to_token = read_tokens_content_source(data_map, file_id)
             if file_id not in added_story_ids:
                 added_story_ids.add(file_id)
                 for tokens in doc_tokens:
@@ -113,11 +129,8 @@ def process_kairos():
             else:
                 label = "TEMPORAL_AFTER"
                 prob = prob_after
-            f_out.write("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
-            f_out.flush()
-
-            key = "{}-{}".format(all_event_ids[i], all_event_ids[j])
-            print("Done: " + key)
+            out_lines.append("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
+    return "".join(out_lines)
 
 
 def ilp_sort(edges):
@@ -176,5 +189,3 @@ def close_constraint():
         id_2 = i + 1
         f_out.write(id_to_event_id[id_1] + "\tTEMPORAL_BEFORE\t" + id_to_event_id[id_2] + "\t1.0\n")
 
-
-close_constraint()

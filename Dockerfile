@@ -18,6 +18,8 @@ ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 
+COPY . /
+
 RUN apt-get update --fix-missing && apt-get install -y \
     bzip2 \
     ca-certificates \
@@ -37,7 +39,10 @@ RUN apt-get update --fix-missing && apt-get install -y \
 RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     mkl \
-    pip install -r requirements.txt \
+    pip install -r requirements.txt
 
-COPY . /
+RUN cd /gurobi/gurobi810/linux64 && python3 setup.py install
+
+RUN cd /
+
 CMD ["/bin/bash"]

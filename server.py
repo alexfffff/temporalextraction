@@ -4,8 +4,11 @@ from flask import send_from_directory
 from flask_cors import CORS
 
 from lib_control import CogCompTimeBackend
+from kairos_processor import process_kairos
 import argparse
 import sys
+import json
+import os
 
 
 class CogCompTimeDemoService:
@@ -48,6 +51,17 @@ class CogCompTimeDemoService:
         return {
             "result": order,
         }
+
+    def handle_uiuc_request(self):
+        form = json.loads(request.data)
+        stories = form['translation']['ltf']
+        story_content = {}
+        for story in stories:
+            story_content[story] = stories[story]
+        event_lines = form['event.cs'].split("\n")
+        temporal_content = process_kairos(story_content, event_lines)
+        form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
+        return form
 
     def handle_json_request(self):
         args = request.get_json()
@@ -133,6 +147,7 @@ class CogCompTimeDemoService:
         self.app.add_url_rule("/<path:path>", "<path:path>", self.handle_root)
         self.app.add_url_rule("/request", "request", self.handle_request, methods=['POST', 'GET'])
         self.app.add_url_rule("/request_temporal_json", "request_temporal_json", self.handle_json_request, methods=['POST', 'GET'])
+        self.app.add_url_rule("/request_uiuc_temporal", "request_uiuc_temporal", self.handle_uiuc_request, methods=['POST', 'GET'])
         if ssl:
             if localhost:
                 self.app.run(ssl_context='adhoc', port=port)

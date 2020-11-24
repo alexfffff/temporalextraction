@@ -72,7 +72,7 @@ class RelationOnlyPredictor:
     def __init__(self):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = T5ForConditionalGeneration.from_pretrained(
-            "/shared/public/ben/start_point_35k_matres"
+            "/models/final_matres"
         ).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained("t5-large")
         self.model.resize_token_embeddings(len(self.tokenizer))
