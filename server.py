@@ -62,7 +62,7 @@ class CogCompTimeDemoService:
             except:
                 continue
         event_lines = [x.strip() for x in form['coref']['event.cs'].split("\n")]
-        temporal_content = process_kairos(stories, event_lines)
+        temporal_content = process_kairos(story_jsons, event_lines)
         form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
         return form
 
