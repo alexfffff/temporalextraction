@@ -58,6 +58,7 @@ class CogCompTimeDemoService:
         story_jsons = []
         for s in stories:
             try:
+                print([x.strip() for x in stories[s].split("\n")])
                 story_jsons[s] = [json.loads(x.strip()) for x in stories[s].split("\n")]
             except:
                 continue
