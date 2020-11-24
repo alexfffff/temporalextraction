@@ -58,7 +58,7 @@ class CogCompTimeDemoService:
         story_content = {}
         for story in stories:
             story_content[story] = stories[story]
-        event_lines = form['event.cs'].split("\n")
+        event_lines = form['coref']['event.cs'].split("\n")
         temporal_content = process_kairos(story_content, event_lines)
         form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
         return form
