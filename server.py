@@ -8,7 +8,6 @@ from kairos_processor import process_kairos
 import argparse
 import sys
 import json
-import os
 
 
 class CogCompTimeDemoService:
@@ -55,13 +54,19 @@ class CogCompTimeDemoService:
     def handle_uiuc_request(self):
         form = json.loads(request.data)
         stories = form['oneie']['en']['json']
-        story_jsons = []
+        story_jsons = {}
         for s in stories:
-            try:
-                print([x.strip() for x in stories[s].split("\n")])
-                story_jsons[s] = [json.loads(x.strip()) for x in stories[s].split("\n")]
-            except:
+            if len(stories[s]) == 0:
                 continue
+            if s not in story_jsons:
+                story_jsons[s] = []
+            ls = [x.strip() for x in stories[s].split("\n")]
+            for lls in ls:
+                try:
+                    obj = json.loads(lls)
+                    story_jsons[s].append(obj)
+                except:
+                    continue
         event_lines = [x.strip() for x in form['coref']['event.cs'].split("\n")]
         temporal_content = process_kairos(story_jsons, event_lines)
         form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
