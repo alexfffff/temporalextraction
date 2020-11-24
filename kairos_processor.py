@@ -25,7 +25,7 @@ def read_tokens_file_source(file_id):
 
 
 def read_tokens_content_source(data_map, file_id):
-    lines = data_map[file_id].split("\n")
+    lines = [x.strip() for x in data_map[file_id].split("\n")]
     all_tokens = []
     cur_tokens = []
     start_char_to_token = {}
