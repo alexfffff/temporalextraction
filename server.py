@@ -54,12 +54,9 @@ class CogCompTimeDemoService:
 
     def handle_uiuc_request(self):
         form = json.loads(request.data)
-        stories = form['translation']['ltf']
-        story_content = {}
-        for story in stories:
-            story_content[story.split(".")[0]] = stories[story]
+        stories = form['oneie']['en']['json']
         event_lines = [x.strip() for x in form['coref']['event.cs'].split("\n")]
-        temporal_content = process_kairos(story_content, event_lines)
+        temporal_content = process_kairos(stories, event_lines)
         form['temporal_relation']['en']['temporal_relation.cs'] = temporal_content
         return form
 

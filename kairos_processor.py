@@ -25,19 +25,17 @@ def read_tokens_file_source(file_id):
 
 
 def read_tokens_content_source(data_map, file_id):
-    lines = [x.strip() for x in data_map[file_id].split("\n")]
+    if file_id not in data_map:
+        return None, None
+    data = data_map[file_id]
     all_tokens = []
-    cur_tokens = []
     start_char_to_token = {}
-    for line in lines:
-        if line.startswith("</SEG>"):
-            all_tokens.append(cur_tokens)
-            cur_tokens = []
-        if line.startswith("<TOKEN"):
-            start_char = int(line.split()[4].split('"')[1])
-            start_char_to_token[start_char] = (len(all_tokens), len(cur_tokens))
-            token = line.split()[-1].split(">")[1].split("<")[0]
-            cur_tokens.append(token)
+    for sent_id, sentence in enumerate(data):
+        cur_tokens = []
+        for i in range(0, len(sentence["tokens"])):
+            start_char_to_token[int(sentence["token_ids"][i].split(":")[1].split("-")[0])] = (sent_id, i)
+            cur_tokens.append(sentence["tokens"][i])
+        all_tokens.append(cur_tokens)
 
     return all_tokens, start_char_to_token
 
@@ -66,11 +64,13 @@ def process_kairos(data_map, lines):
         groups = line.split("\t")
         event_id = groups[0]
         if groups[1] == "mention.actual":
-            if event_id not in event_id_to_token_ids:
-                event_id_to_token_ids[event_id] = []
             file_id = groups[3].split(":")[0]
             start_char = int(groups[3].split(":")[1].split("-")[0])
             doc_tokens, start_char_to_token = read_tokens_content_source(data_map, file_id)
+            if doc_tokens is None:
+                continue
+            if event_id not in event_id_to_token_ids:
+                event_id_to_token_ids[event_id] = []
             if file_id not in added_story_ids:
                 added_story_ids.add(file_id)
                 for tokens in doc_tokens:
