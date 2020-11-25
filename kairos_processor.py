@@ -93,9 +93,9 @@ def process_kairos(data_map, lines):
             j_events = event_id_to_token_ids[all_event_ids[j]]
             random.shuffle(i_events)
             random.shuffle(j_events)
-            if len(i_events) > 10:
+            if len(i_events) > 5:
                 i_events = i_events[:10]
-            if len(j_events) > 10:
+            if len(j_events) > 5:
                 j_events = j_events[:10]
 
             to_process = []
