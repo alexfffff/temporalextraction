@@ -339,6 +339,7 @@ class PretrainedModel:
     def predictor(self) -> Predictor:
         archive = load_archive(self.archive_file)
         return Predictor.from_archive(archive, self.predictor_name)
+
 class AllenSRL:
     def __init__(self, server_mode=False):
         if server_mode:

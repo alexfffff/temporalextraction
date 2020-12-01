@@ -3,7 +3,7 @@ from flask import request
 from flask import send_from_directory
 from flask_cors import CORS
 
-from lib_control import CogCompTimeBackend
+# from lib_control import CogCompTimeBackend
 from kairos_processor import process_kairos
 import argparse
 import sys
@@ -15,7 +15,7 @@ class CogCompTimeDemoService:
     def __init__(self):
         self.app = Flask(__name__)
         CORS(self.app)
-        self.backend = CogCompTimeBackend()
+        # self.backend = CogCompTimeBackend()
 
     @staticmethod
     def handle_root(path):

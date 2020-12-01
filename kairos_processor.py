@@ -4,6 +4,7 @@ from tracie_model.start_predictor import RelationOnlyPredictor
 import random
 from gurobi_graph import *
 from lib_control import Graph
+import torch
 
 
 def read_tokens_file_source(file_id):
@@ -55,6 +56,8 @@ def process_kairos(data_map, lines):
         'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
         'semantic-role-labeling'
     ).predictor()
+    if torch.cuda.is_available():
+        srl_model._model = srl_model._model.cuda()
     event_id_to_token_ids = {}
     added_story_ids = set()
     all_sentences = []
@@ -132,6 +135,9 @@ def process_kairos(data_map, lines):
                 label = "TEMPORAL_AFTER"
                 prob = prob_after
             out_lines.append("{}\t{}\t{}\t{}\n".format(all_event_ids[i], label, all_event_ids[j], str(prob)))
+    del srl_model._model
+    del predictor.model
+    torch.cuda.empty_cache()
     return "".join(out_lines)
 
 
