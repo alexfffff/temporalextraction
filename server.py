@@ -3,7 +3,7 @@ from flask import request
 from flask import send_from_directory
 from flask_cors import CORS
 
-# from lib_control import CogCompTimeBackend
+from lib_control import CogCompTimeBackend
 from kairos_processor import process_kairos
 import argparse
 import sys
@@ -15,7 +15,7 @@ class CogCompTimeDemoService:
     def __init__(self):
         self.app = Flask(__name__)
         CORS(self.app)
-        # self.backend = CogCompTimeBackend()
+        self.backend = CogCompTimeBackend()
 
     @staticmethod
     def handle_root(path):
@@ -156,6 +156,7 @@ class CogCompTimeDemoService:
         self.app.add_url_rule("/<path:path>", "<path:path>", self.handle_root)
         self.app.add_url_rule("/request", "request", self.handle_request, methods=['POST', 'GET'])
         self.app.add_url_rule("/request_temporal_json", "request_temporal_json", self.handle_json_request, methods=['POST', 'GET'])
+        self.app.add_url_rule("/annotate", "annotate", self.handle_json_request, methods=['POST', 'GET'])
         self.app.add_url_rule("/request_uiuc_temporal", "request_uiuc_temporal", self.handle_uiuc_request, methods=['POST', 'GET'])
         if ssl:
             if localhost:
