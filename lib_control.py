@@ -350,6 +350,121 @@ class CogCompTimeBackend:
                 relation_map[(sorted_edges[j], sorted_edges[i])] = ["after", distance]
         return single_verb_map, relation_map
 
+    '''
+    A version of build_graph_with_events() without gurobi sorting for fast processing
+    input:
+    @sentences: a list of list of tokens. [['i', 'am', 'sentence', 'one'], ['i', 'am', 'sentence', 'two']]
+    @indices: a list of verbs (sent_id, tok_id) [(0, 1), (1, 1)] for the two 'am's.
+    return:
+    @temporal_relation: a list of binary comparisons [(0, 1, distance), (1, 0, distance)]
+    '''
+    def build_graph_with_events_no_gurobi(self, sentences, indices, dct=None):
+        sentences, srl_objs = self.parse_srl(sentences, pre_sentencized=True)
+        story = get_story(srl_objs)
+        event_map = self.extract_events_given(indices, sentences)
+
+        all_event_ids = list(event_map.keys())
+        to_process_instances = []
+        for event_id_i in all_event_ids:
+            for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                phrase_i = self.format_model_phrase(event_i, srl_objs[event_i[0]])
+                phrase_j = self.format_model_phrase(event_j, srl_objs[event_j[0]])
+                instance = "event: {} starts before {} story: {} \t nothing".format(phrase_i, phrase_j, story)
+                to_process_instances.append(instance)
+
+        to_process_duration = []
+        for event_id_i in all_event_ids:
+            event_i = event_map[event_id_i]
+            phrase = self.format_duration_phrase(event_i, srl_objs[event_i[0]])
+            to_process_duration.append("event: {} story: {} \t nothing".format(phrase, story))
+
+        results = self.predictor.predict(to_process_instances)
+        results_distance = self.predictor.predict(to_process_instances, query_type="distance")
+        results_duration = self.predictor.predict(to_process_duration, query_type="duration")
+
+        duration_map = {}
+        for i, event_id_i in enumerate(all_event_ids):
+            duration_map[event_id_i] = self.get_averaged_val(results_duration[i])
+
+        edge_map = {}
+        distance_map = {}
+        it = 0
+        tokens = []
+        for obj in srl_objs:
+            tokens.append(list(obj['words']))
+        if dct is None:
+            dct = TimeStruct(None, None, 1, 10, 2020)
+        else:
+            dct = TimeStruct(None, None, int(dct.split("-")[2]), int(dct.split("-")[1]), int(dct.split("-")[0]))
+        self.alex_srl.get_graph(tokens, dct)
+        for event_id_i in all_event_ids:
+            for event_id_j in all_event_ids:
+                if event_id_i == event_id_j:
+                    continue
+                prediction = results[it]
+                prediction_distance = results_distance[it]
+                distance_map[(event_id_i, event_id_j)] = prediction_distance
+                it += 1
+                event_i = event_map[event_id_i]
+                event_j = event_map[event_id_j]
+                timex_relation = self.alex_srl.compare_events(
+                    (event_i[0], event_i[1]), (event_j[0], event_j[1])
+                )
+
+                if timex_relation is None:
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = prediction[0]
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = prediction[1]
+                else:
+                    if timex_relation > 0:
+                        timex_relation = 0.0
+                    if timex_relation < 0:
+                        timex_relation = 1.0
+                    if event_id_i < event_id_j:
+                        key = "{},{}".format(str(event_id_i), str(event_id_j))
+                        value = float(timex_relation)
+                    else:
+                        key = "{},{}".format(str(event_id_j), str(event_id_i))
+                        value = 1.0 - float(timex_relation)
+                if key not in edge_map:
+                    edge_map[key] = 0.0
+                edge_map[key] += value
+        directed_edge_map = {}
+        for edge in edge_map:
+            if edge_map[edge] < 1.0:
+                key = "{},{}".format(edge.split(",")[1], edge.split(",")[0])
+                directed_edge_map[key] = (2.0 - edge_map[edge]) / 2.0
+            else:
+                directed_edge_map[edge] = edge_map[edge] / 2.0
+
+        single_verb_map = {}
+        relation_map = {}
+        for key in edge_map:
+            e1 = int(key.split(",")[0])
+            e2 = int(key.split(",")[1])
+            input_arg = (event_map[e1][0], event_map[e1][1])
+            t1 = str(self.alex_srl.get_absolute_time(input_arg))
+            input_arg = (event_map[e2][0], event_map[e2][1])
+            t2 = str(self.alex_srl.get_absolute_time(input_arg))
+            d1 = duration_map[e1]
+            d2 = duration_map[e2]
+            distance = self.get_averaged_val(distance_map[(e1, e2)])
+            relation_map[(e1, e2)] = ["before", distance]
+            relation_map[(e2, e1)] = ["after", distance]
+            if e1 not in single_verb_map:
+                single_verb_map[e1] = [t1, d1]
+            if e2 not in single_verb_map:
+                single_verb_map[e2] = [t2, d2]
+
+        return single_verb_map, relation_map
+
     def kairos_wrapper(self, json_obj):
         pass
 
