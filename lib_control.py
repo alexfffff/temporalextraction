@@ -49,6 +49,21 @@ def get_story(srl_objs, max_len=300):
     return final_story
 
 
+def get_story_prev_next(srl_objs, obj_id, max_len=300):
+    ret = []
+    if obj_id >= 1:
+        for w in srl_objs[obj_id - 1]['words']:
+            ret.append(w)
+    for w in srl_objs[obj_id]['words']:
+        ret.append(w)
+    if obj_id < len(srl_objs) - 1:
+        for w in srl_objs[obj_id + 1]['words']:
+            ret.append(w)
+    if len(ret) > max_len:
+        ret = ret[:max_len]
+    return " ".join(ret)
+
+
 class Graph:
     def __init__(self, vertices):
         self.graph = defaultdict(list)
@@ -190,6 +205,14 @@ class CogCompTimeBackend:
         if phrase == "":
             phrase = event[2]
         return phrase
+
+    def format_duration_phrase_marker(self, event, srl):
+        phrase = ""
+        for i, w in enumerate(srl['words']):
+            if i == event[1]:
+                phrase += "<extra_id_1> "
+            phrase += w + " "
+        return phrase.strip()
 
     '''
     input: edge map 
@@ -379,8 +402,9 @@ class CogCompTimeBackend:
         to_process_duration = []
         for event_id_i in all_event_ids:
             event_i = event_map[event_id_i]
-            phrase = self.format_duration_phrase(event_i, srl_objs[event_i[0]])
-            to_process_duration.append("event: {} story: {} \t nothing".format(phrase, story))
+            phrase = self.format_duration_phrase_marker(event_i, srl_objs[event_i[0]])
+            prev_next_context = get_story_prev_next(srl_objs, event_i[0])
+            to_process_duration.append("event: {} story: {} \t nothing".format(phrase, prev_next_context))
 
         results = self.predictor.predict(to_process_instances)
         results_distance = self.predictor.predict(to_process_instances, query_type="distance")
