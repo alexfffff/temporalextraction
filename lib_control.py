@@ -266,6 +266,23 @@ class CogCompTimeBackend:
             s += v * values[i]
         return math.exp(s)
 
+
+    def get_averaged_val_simple_mean(self, probabilities):
+        # in minutes
+        values = {
+            0: 1.0,
+            1: 60.0,
+            2: 24.0 * 60.0,
+            3: 7.0 * 24.0 * 60.0,
+            4: 30.0 * 24.0 * 60.0,
+            5: 365.0 * 24.0 * 60.0,
+            6: 10.0 * 365.0 * 24.0 * 60.0
+        }
+        s = 0.0
+        for i, v in enumerate(probabilities):
+            s += v * values[i]
+        return s
+
     '''
     input:
     @sentences: a list of list of tokens. [['i', 'am', 'sentence', 'one'], ['i', 'am', 'sentence', 'two']]
@@ -411,8 +428,10 @@ class CogCompTimeBackend:
         results_duration = self.predictor.predict(to_process_duration, query_type="duration")
 
         duration_map = {}
+        duration_map_probs = {}
         for i, event_id_i in enumerate(all_event_ids):
             duration_map[event_id_i] = self.get_averaged_val(results_duration[i])
+            duration_map_probs[event_id_i] = results_duration[i]
 
         edge_map = {}
         distance_map = {}
@@ -483,9 +502,9 @@ class CogCompTimeBackend:
             relation_map[(e1, e2)] = ["before", distance]
             relation_map[(e2, e1)] = ["after", distance]
             if e1 not in single_verb_map:
-                single_verb_map[e1] = [t1, d1]
+                single_verb_map[e1] = [t1, d1] + duration_map_probs[e1]
             if e2 not in single_verb_map:
-                single_verb_map[e2] = [t2, d2]
+                single_verb_map[e2] = [t2, d2] + duration_map_probs[e2]
 
         return single_verb_map, relation_map
 

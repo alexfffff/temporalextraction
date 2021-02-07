@@ -214,6 +214,14 @@ class CogCompTimeDemoService:
             update_ids = con_id_to_json_id[trigger_key]
             for uid in update_ids:
                 args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration"] = int(single_verb_map[back_id][1])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_minute_prob"] = int(single_verb_map[back_id][2])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_hour_prob"] = int(single_verb_map[back_id][3])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_day_prob"] = int(single_verb_map[back_id][4])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_week_prob"] = int(single_verb_map[back_id][5])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_month_prob"] = int(single_verb_map[back_id][6])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_year_prob"] = int(single_verb_map[back_id][7])
+                args["views"][event_view_id]["viewData"][0]["constituents"][uid]["properties"]["duration_decade_prob"] = int(single_verb_map[back_id][8])
+
         for back_id_pair in relation_map:
             source = back_id_pair[0]
             dest = back_id_pair[1]
