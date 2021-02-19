@@ -148,6 +148,8 @@ class Predictor:
     # Input: a list of lines
     # Return: a list of [pos, neg] probabilities
     def predict(self, lines, query_type="order"):
+        if len(lines) == 0:
+            return None
         eval_dataset = get_dataset(lines, self.tokenizer)
         sampler = SequentialSampler(eval_dataset)
         data_loader = DataLoader(
