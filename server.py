@@ -99,6 +99,8 @@ class CogCompTimeDemoService:
             start = constituent["start"]
             if "properties" in constituent:
                 key = (constituent['properties']['sentence_id'], start)
+                if key[0] > 0:
+                    key = (key[0], start - sent_ends[key[0] - 1])
                 event_triggers.append(key)
                 if key not in con_id_to_json_id:
                     con_id_to_json_id[key] = []
@@ -178,6 +180,8 @@ class CogCompTimeDemoService:
             start = constituent["start"]
             if "properties" in constituent:
                 key = (constituent['properties']['sentence_id'], start)
+                if key[0] > 0:
+                    key = (key[0], start - sent_ends[key[0] - 1])
                 event_triggers.append(key)
                 if key not in con_id_to_json_id:
                     con_id_to_json_id[key] = []
