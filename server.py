@@ -133,37 +133,15 @@ class CogCompTimeDemoService:
 
     def handle_json_request_no_gurobi(self):
         args = request.get_json()
-        token_to_span = self.tokenized_to_origin_span(args['text'], args['tokens'])
         tokens = args["tokens"]
-        sent_ends = []
-        for sent_end_char_id in args["sentences"]["sentenceEndPositions"]:
-            for i, t in enumerate(token_to_span):
-                if t[1] + 1 == sent_end_char_id:
-                    sent_ends.append(i)
-                    break
-        sent_ends = list(set(sent_ends))
-        accumulator = 0
-        token_to_send_id = {}
-        for i in range(0, len(tokens)):
-            token_to_send_id[i] = accumulator
-            if i in sent_ends:
-                accumulator += 1
+        sent_ends = args["sentences"]["sentenceEndPositions"]
         sentences = []
-        cur_sent_id = 0
         sentence = []
-        for t in token_to_send_id:
-            if token_to_send_id[t] == cur_sent_id:
-                sentence.append(tokens[t])
-            else:
+        for i, token in enumerate(tokens):
+            sentence.append(token)
+            if i + 1 in sent_ends:
                 sentences.append(sentence)
-                cur_sent_id = token_to_send_id[t]
-                sentence = [tokens[t]]
-        sentences.append(sentence)
-        sentence_minus_val = {}
-        accu = 0
-        for i in range(0, len(sentences)):
-            sentence_minus_val[i] = accu + len(sentences[i])
-            accu = len(sentences[i])
+                sentence = []
         views = args["views"]
         event_view = None
         event_view_id = None
