@@ -138,9 +138,9 @@ class Graph:
 
 class CogCompTimeBackend:
 
-    def __init__(self):
+    def __init__(self, config_lines=None):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.predictor = Predictor()
+        self.predictor = Predictor(config_lines)
         self.srl_model = PretrainedModel(
             'https://s3-us-west-2.amazonaws.com/allennlp/models/srl-model-2018.05.25.tar.gz',
             'semantic-role-labeling'

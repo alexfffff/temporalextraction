@@ -1,8 +1,18 @@
 from lib_control import CogCompTimeBackend
 
 
+"""
+An example main function
+This first executes Alex's implementation of rule-based parsing (e.g., "2 days before")
+Then runs probabilistic models from Zhou et al. 2020
+The final results is an aggregation of the two, see line 28 for separate requests
+"""
 def run_example(sentences, indices, dct=None):
-    backend = CogCompTimeBackend()
+    backend = CogCompTimeBackend(config_lines=[
+        "order_model	/shared/public/ben/final_matres",
+        "distance_model	/shared/public/ben/final_distance",
+        "duration_model	/shared/public/ben/final_duration",
+    ])
     single_verb_map, relation_map = backend.build_graph_with_events_no_gurobi(sentences, indices, dct)
     """
     single_verb_map: 
@@ -17,6 +27,7 @@ def run_example(sentences, indices, dct=None):
         }
     if you only want rule-parser results (e.g., 2 days before), see L469 in lib_control.py
     """
+
 
 run_example(
     [
